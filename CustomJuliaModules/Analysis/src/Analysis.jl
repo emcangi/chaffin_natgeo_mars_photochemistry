@@ -1,3 +1,5 @@
+__precompile__()
+
 module Analysis
 
 using PyPlot
@@ -9,121 +11,26 @@ using DelimitedFiles
 using SparseArrays
 using LinearAlgebra
 using PlotUtils
-
-# using Photochemistry
+using Photochemistry: get_ncurrent, write_ncurrent, n_tot, effusion_velocity, 
+                      speciesbcs, plot_bg, plotatm, Tpiecewise, Psat, Psat_HDO, 
+                      searchdir, search_subfolders, create_folder, input
 
 include("../../../PARAMETERS.jl")
 
 export get_ncurrent, write_ncurrent, n_tot, 
        effusion_velocity, speciesbcs, 
        areadensity_to_micron_atm, molec_to_GEL, GEL_to_molecule, 
-       get_flux, calculate_f, 
+       get_flux, calculate_f,
        search_subfolders, create_folder, searchdir, input,
-       get_colors, get_grad_colors, plot_bg,
+       get_colors, get_grad_colors, plot_bg, plotatm,
        Tpiecewise, Psat, Psat_HDO
 
-# Array manipulation ===========================================================
-function get_ncurrent(readfile)
-    #=
-    Retrieves the matrix of species concentrations by altitude from an HDF5
-    file containing a converged atmosphere.
-    =#
-    n_current_tag_list = map(Symbol, h5read(readfile,"n_current/species"))
-    n_current_mat = h5read(readfile,"n_current/n_current_mat");
-    n_current = Dict{Symbol, Array{Float64, 1}}()
-
-    for ispecies in [1:length(n_current_tag_list);]
-        n_current[n_current_tag_list[ispecies]] = reshape(n_current_mat[:,ispecies],length(alt)-2)
-    end
-    return n_current
-end
-
-function write_ncurrent(n_current, filename, alt)
-    #=
-    Writes out the current state of species concentrations by altitude to a file
-    (for converged atmosphere). 
-    =# 
-    n_current_mat = Array{Float64}(undef, length(alt)-2, 
-                                   length(collect(keys(n_current))));
-    for ispecies in [1:length(collect(keys(n_current)));]
-        for ialt in [1:length(alt)-2;]
-            n_current_mat[ialt, ispecies] = n_current[collect(keys(n_current))[ispecies]][ialt]
-        end
-    end
-    h5write(filename,"n_current/n_current_mat",n_current_mat)
-    h5write(filename,"n_current/alt",alt)
-    h5write(filename,"n_current/species",map(string, collect(keys(n_current))))
-end
-
-function write_ncurrent(n_current, filename)
-    #=
-    Writes out the current state of species concentrations by altitude to a file
-    (for converged atmosphere). 
-    =# 
-    n_current_mat = Array{Float64}(undef, length(alt)-2, 
-                                   length(collect(keys(n_current))));
-    for ispecies in [1:length(collect(keys(n_current)));]
-        for ialt in [1:length(alt)-2;]
-            n_current_mat[ialt, ispecies] = n_current[collect(keys(n_current))[ispecies]][ialt]
-        end
-    end
-    h5write(filename,"n_current/n_current_mat",n_current_mat)
-    h5write(filename,"n_current/alt",alt)
-    h5write(filename,"n_current/species",map(string, collect(keys(n_current))))
-end
-
-function n_tot(n_current, z, n_alt_index)
-    #= get the total number , density at a given altitude =#
-    thisaltindex = n_alt_index[z]
-    return sum( [n_current[s][thisaltindex] for s in specieslist] )
-end
-
-function n_tot(n_current, z)
-    #= get the total number density at a given altitude =#
-    thisaltindex = n_alt_index[z]
-    return sum( [n_current[s][thisaltindex] for s in specieslist] )
-end
-
-# boundary condition functions =================================================
-
-function effusion_velocity(Texo::Float64, m::Float64, zmax)
-    #=
-    Returns effusion velocity for a species in cm/s
-    Texo: temperature of the exobase (upper boundary) in K
-    m: mass of one molecule of species in amu
-    zmax: max altitude in cm
-    =#
-    
-    # lambda is the Jeans parameter (Gronoff 2020), basically the ratio of the 
-    # escape velocity GmM/z to the thermal energy, kT.
-    lambda = (m*mH*bigG*marsM)/(boltzmannK*Texo*1e-2*(radiusM+zmax))
-    vth = sqrt(2*boltzmannK*Texo/(m*mH))  # this one is in m/s
-    v = 1e2*exp(-lambda)*vth*(lambda+1)/(2*pi^0.5)  # this is in cm/s
-    return v
-end
-
-function speciesbcs(species, surface_watersat, v_eff, oflux)
-    H2Osat = surface_watersat["H2O"]
-    HDOsat = surface_watersat["HDO"]
-
-    speciesbclist=Dict(
-                        :CO2=>["n" 2.1e17; "f" 0.],
-                        :Ar=>["n" 2.0e-2*2.1e17; "f" 0.],
-                        :N2=>["n" 1.9e-2*2.1e17; "f" 0.],
-                        :H2O=>["n" H2Osat[1]; "f" 0.], # bc doesnt matter if H2O fixed
-                        :HDO=>["n" HDOsat[1]; "f" 0.],
-                        :O=>["f" 0.; "f" oflux],
-                        :H2=>["f" 0.; "v" v_eff["H2"]],
-                        :HD=>["f" 0.; "v" v_eff["HD"]],
-                        :H=>["f" 0.; "v" v_eff["H"]],
-                        :D=>["f" 0.; "v" v_eff["D"]],
-                      );
-    get(speciesbclist, species, ["f" 0.; "f" 0.])
-end
 
 # Conversions ==================================================================
 function areadensity_to_micron_atm(numpercm2)
-    # #/cm^2 * (cm^2/m^2) * (10μm-am/2.687e20 #/m^2)
+    #=
+    Conversion: num/cm^2 * (cm^2/m^2) * (10μm-am/2.687e20 #/m^2)
+    =#
     return numpercm2 * (1e4/1) * (10/2.687e20)
 end
 
@@ -157,10 +64,12 @@ function GEL_to_molecule(GEL, HorH2O)
 end
 
 # Flux and f ===================================================================
-function get_flux(species, readfile, oflux, temps; repro=false, therm_only=false)
+function get_flux(species, readfile, temps; oflux=1.2e8, repro=false, therm_only=false)
     #=
     Retrieves the flux for either H or D at the top of the equilibrated 
     atmosphere.
+
+    NOT TO BE CONFUSED WITH FUNCTION getflux DEFINED IN PHOTOCHEMISTRY MODULE!!
 
     species: species in question, :H or :D. no error control right now
     readfile: the file with simulation results
@@ -183,6 +92,7 @@ function get_flux(species, readfile, oflux, temps; repro=false, therm_only=false
     contrib_t = Dict(:H=>0., :D=>0., :H2=>0., :HD=>0.)
     contrib_nt = Dict(:H=>0., :D=>0., :H2=>0., :HD=>0.)
 
+    # total thermal and non-thermal fluxes, separated.
     flux_t = 0
     flux_nt = 0
 
@@ -213,16 +123,18 @@ function get_flux(species, readfile, oflux, temps; repro=false, therm_only=false
         contrib_t[s] += this_species_t_flux
     end
     
-    # Nonthermal ecsape velocities for temperatures: T_exo = 158K, 205K, 264K. 
-    # using ratios of thermal/nonthermal from Kras 2010, in cm/s.
+        # If inclusion of non-thermal escape is requested (therm_only==false), this section
+    # will add the effect of non-thermal escape. 
     if therm_only==false
         if repro==false
+            # Nonthermal ecsape velocities for temperatures: T_exo = 150K, 205K, 250K,
+            # using ratios of thermal/nonthermal from Kras 2002, in cm/s.
             inds = Dict(150=>1, 205=>2, 250=>3) # indices for different exobase temps
             i = inds[Int(temps[3])]             # convert exobase temp to an index 
             v_nt = Dict(:H => [26.7, 34.4, 45.1], :H2 => [8.05, 10.2, 13.26], # assuming 2nd order polynomial
                         :D => [10.65, 13.47, 17.47], :HD => [5.65, 6.00, 7.42])  # in cm/s.
         else
-            # If reproducing past studies, need the nonthermal escape from Kras 2002.
+            # If reproducing past studies, need the exact nonthermal escape velocities from Kras 2002.
             inds = Dict(200 => 1, 270 => 2, 350 => 3)
             i = inds[temps[3]]
             # Nonthermal: cm/s. Each species has a value recorded at T = 200K, 
@@ -245,20 +157,23 @@ function get_flux(species, readfile, oflux, temps; repro=false, therm_only=false
     end
 end
 
-function calculate_f(thefile, flux_type, temps, oflux; reprod=false)
+function calculate_f(thefile, flux_type, temps; oflux=1.2e8, reprod=false)
     #=
     A function to calculate f or a single simulation.
 
     thefile: an equilibrated atmosphere simulation for which to calculate f.
-
+    flux_type: "thermal", "nonthermal", or "both"
+    temps: list of the 3 parameters [Tsurf, Ttropo, Texo]
+    oflux: escape flux of atomic O if varying. 
+    reprod: whether we are calculating for a reproduction of an earlier study.
     =#
     ncur = get_ncurrent(thefile)
 
     # contrib dictionaries (of how each bearer species contributes to escape)
     # are not used in this function.
 
-    t_flux_H, nt_flux_H, contrib_t_H, contrib_nt_H = get_flux(:H, thefile, oflux, temps, repro=reprod)
-    t_flux_D, nt_flux_D, contrib_t_D, contrib_nt_D = get_flux(:D, thefile, oflux, temps, repro=reprod)
+    t_flux_H, nt_flux_H, contrib_t_H, contrib_nt_H = get_flux(:H, thefile, temps, repro=reprod)
+    t_flux_D, nt_flux_D, contrib_t_D, contrib_nt_D = get_flux(:D, thefile, temps, repro=reprod)
 
     if flux_type=="thermal"
         Hf = t_flux_H
@@ -276,7 +191,7 @@ function calculate_f(thefile, flux_type, temps, oflux; reprod=false)
     return 2*(Df/Hf) / (ncur[:HDO][1]/ncur[:H2O][1])
 end
 
-# Plot Hacks ===================================================================
+# Plotting Functions ============================================================
 function get_colors(L, cmap)
     #=
     Generates some colors based on a non-gradient color map for use in plotting a 
@@ -302,15 +217,6 @@ function get_colors(L, cmap)
     return c
 end
 
-function plot_bg(axob)
-    axob.set_facecolor("#ededed")
-    axob.grid(zorder=0, color="white", which="major")
-    for side in ["top", "bottom", "left", "right"]
-        axob.spines[side].set_visible(false)
-    end
-    # return axob
-end
-
 function get_grad_colors(L, cmap; strt=0, stp=1)
     #=
     Generates some colors based on a GRADIENT color map for use in plotting a 
@@ -319,7 +225,6 @@ function get_grad_colors(L, cmap; strt=0, stp=1)
     cmap: color map name
 
     AVAILABLE MAPS: blues, viridis, pu_or, magma, plasma, inferno
-
     =#
 
     colors_dumb = [cgrad(Symbol(cmap))[x] for x in range(strt, stop=stp, length=L)]
@@ -331,99 +236,6 @@ function get_grad_colors(L, cmap; strt=0, stp=1)
         c[i, 3] = blue(colors_dumb[i])
     end
     return c
-end
-
-# TEMPERATURE ==================================================================
-
-function Tpiecewise(z::Float64, Tsurf, Ttropo, Texo, E="")
-    #= DO NOT MODIFY! If you want to change the temperature, define a
-    new function or select different arguments and pass to Temp(z)
-
-    a piecewise function for temperature as a function of altitude,
-    using Krasnopolsky's 2010 "half-Gaussian" function for temperatures 
-    altitudes above the tropopause, with a constant lapse rate (1.4K/km) 
-    in the lower atmosphere. The tropopause width is allowed to vary
-    in certain cases.
-
-    z: altitude above surface in cm
-    Tsurf: Surface temperature in K
-    Tropo: tropopause tempearture
-    Texo: exobase temperature
-    E: type of experiment, used for determining if mesopause width will vary 
-    =#
-    
-    lapserate = -1.4e-5 # lapse rate in K/cm
-    ztropo = 120e5  # height of the tropopause top
-    
-    # set the width of tropopause. It varies unless we're only varying the 
-    # exobase temperature.
-    if (E=="tropo") || (E=="surf")
-        ztropo_bot = (Ttropo-Tsurf)/(lapserate)
-        ztropowidth = ztropo - ztropo_bot
-    else
-        ztropo_bot = (Ttropo-Tsurf)/(lapserate)
-        ztropowidth = ztropo - ztropo_bot
-    end
-
-    if z >= ztropo  # upper atmosphere
-        return Texo - (Texo - Ttropo)*exp(-((z-ztropo)^2)/(8e10*Texo))
-    elseif ztropo > z >= ztropo - ztropowidth  # tropopause
-        return Ttropo
-    elseif ztropo-ztropowidth > z  # lower atmosphere
-        return Tsurf + lapserate*z
-    end
-end
-
-# WATER ========================================================================
-# 1st term is a conversion factor to convert to (#/cm^3) from Pa. Source: Marti & Mauersberger 1993
-Psat(T::Float64) = (1e-6/(boltzmannK * T))*(10^(-2663.5/T + 12.537))
-
-# It doesn't matter to get the exact SVP of HDO because we never saturate. 
-# However, this function is defined on the offchance someone studies HDO.
-Psat_HDO(T::Float64) = (1e-6/(boltzmannK * T))*(10^(-2663.5/T + 12.537))
-
-
-# Utility ======================================================================
-searchdir(path, key) = filter(x->occursin(key,x), readdir(path))
-
-function search_subfolders(path, key)
-    #=
-    path: a folder containing subfolders and files.
-    key: the pattern you wish to find.
-
-    Searches the top level subfolders within path for all folders matching a 
-    certain regex given by key. Does not search files or sub-subfolders.
-    =#
-    folders = []
-    for (root, dirs, files) in walkdir(path)
-        if root==path
-            for dir in dirs
-                push!(folders, joinpath(root, dir)) # path to directories
-            end
-        end
-    end
-
-    wfolders = filter(x->occursin(key, x), folders)
-    return wfolders
-end
-
-function create_folder(foldername, parentdir)
-    #=
-    Creates a folder, or if it already exists, notifies the user.
-    =#
-    println("Checking for existence of $(foldername) folder in $(parentdir)")
-    dircontents = readdir(parentdir)
-    if foldername in dircontents
-        println("Folder $(foldername) exists")
-    else
-        mkdir(parentdir*foldername)
-        println("Created folder ", foldername)
-    end
-end
-
-function input(prompt::String="")::String
-   print(prompt)
-   return chomp(readline())
 end
 
 end

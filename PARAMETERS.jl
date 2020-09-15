@@ -15,6 +15,7 @@ results_dir = research_dir*"Results/"
 main_cases_dir = "MainCases/"
 det_cases_dir = "DetailedCases/"
 
+
 # fundamental constants ========================================================
 const boltzmannK = 1.38e-23;    # J/K
 const bigG = 6.67e-11;          # N m^2/kg^2
@@ -236,7 +237,7 @@ reactionnet = [   #Photodissociation
              [[:D, :HO2], [:OH, :OD], :(0.71*7.2e-11)], # Yung88: rate 0.71*H-ana (assumed). verified Yung89 3/28/18 (base: 7.05, minor disagreement)
              [[:D, :HO2], [:HD, :O2], :(0.71*0.5*6.9e-12)], # Yung88: rate 0.71*H-ana (assumed). verified Yung89 3/28/18 (base 7.29, minor disagreement)
              [[:D, :HO2], [:HDO, :O1D], :(0.71*1.6e-12)], # Yung88: rate 0.71*H-ana (assumed). Changed to O1D to match what Mike put in 3rd line from top of this section.
-             [[:H, :DO2], [:HO2, :D], :(1e-10/(0.54*exp(890 ./ T)))], # Yung88 (assumed) - turn off for Case 2
+             [[:H, :DO2], [:HO2, :D], :(1e-10 ./ (0.54*exp(890 ./ T)))], # Yung88 (assumed) - turn off for Case 2
              [[:D, :HO2], [:DO2, :H], :(1.0e-10)], # Yung88. verified Yung89 3/28/18 - turn off for Case 2
 
              ## H + H2O2. deuterated analogues added 3/29
@@ -251,7 +252,7 @@ reactionnet = [   #Photodissociation
              [[:D, :H2O2], [:HDO, :OH], :(0.5*1.16e-11*exp(-2110 ./ T))], # see previous line
              [[:D, :H2O2], [:H2O, :OD], :(0.5*1.16e-11*exp(-2110 ./ T))], # see previous line
              [[:D, :HDO2], [:OD, :HDO], :(0.5*1.16e-11*exp(-2110 ./ T))], # added 4/3 with assumed rate from other rxns
-             [[:D, :HDO2], [:OH, :D2O], :(0.5*1.16e-11*exp(-2110/T))], # sourced from Cazaux et al
+             [[:D, :HDO2], [:OH, :D2O], :(0.5*1.16e-11*exp(-2110 ./ T))], # sourced from Cazaux et al
 
              # Interconversion of odd H
              ## H + O2
@@ -297,7 +298,6 @@ reactionnet = [   #Photodissociation
              ## HO2 + HO2
              [[:HO2, :HO2], [:H2O2, :O2], :(3.0e-13*exp(460 ./ T))], # Sander2011. Yung89: 2.3e-13*exp(600/T). KIDA 230-420K: 2.2e-13*exp(600/T)
              [[:DO2, :HO2], [:HDO2, :O2], :(3.0e-13*exp(460 ./ T))], # Yung88: same as H-ana (assumed)
-             # *** why do we have he next two reactions? I forgot...
              [[:HO2, :HO2, :M], [:H2O2, :O2, :M], :(2*2.1e-33*exp(920 ./ T))], # Sander2011.
              [[:HO2, :DO2, :M], [:HDO2, :O2, :M], :(2*2.1e-33*exp(920 ./ T))], # added 3/13 with assumed same rate as H analogue
 

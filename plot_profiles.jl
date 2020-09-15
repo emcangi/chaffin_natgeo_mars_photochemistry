@@ -95,8 +95,8 @@ function plot_one_profile(Tp, titletext, base)
     titletext: exactly what it sounds like
     base: where to save the figure
 
-    This function also appears within the code of converge_new_file, but this 
-    function can be called if for some reason a profile wasn't generated.
+    This is similar to plot_temp_prof but more useful for plotting a profile 
+    during analysis.
     =#
     # make plots pretty
     rcParams = PyCall.PyDict(matplotlib."rcParams")
@@ -107,7 +107,7 @@ function plot_one_profile(Tp, titletext, base)
     rcParams["xtick.labelsize"] = 18
     rcParams["ytick.labelsize"] = 18
 
-    alt = (0:2e5:zmax)
+    alt = (0:dz:zmax)
 
     # plot
     fig, ax = subplots(figsize=(4,6))
@@ -139,7 +139,8 @@ end
 
 function plot_all_water_profs(Tp, hygropause_alt, base, resultsfolder; plot_HDO=true)
     #=
-    Plots the various water profiles all together.
+    Plots the various water profiles all together. Unfortunately some text has 
+    to be copied directly from converge_new_file.jl to set up the water profiles.
 
     Tp: a vector of the three temperatures
     hygropause_alt: altitude of the hygropause in cm
@@ -265,6 +266,9 @@ end
 function plot_temp_3panel(base)
     #=
     base: main results folder (general)
+
+    Makes a 3-subfigure plot of all the temperature profiles used for the 
+    detailed temperature variation experiments.
     =#
 
     rcParams = PyCall.PyDict(matplotlib."rcParams")
@@ -334,9 +338,7 @@ end
 
 Tprofs = [[lowTs, meanTt, meanTe], [meanTs, lowTt, meanTe], [meanTs, meanTt, lowTe], 
                  [hiTs, meanTt, meanTe], [meanTs, hiTt, meanTe], [meanTs, meanTt, hiTe]]
-
 plot_T_6panel(results_dir, Tprofs)
-
 
 plot_temp_3panel(results_dir)
 

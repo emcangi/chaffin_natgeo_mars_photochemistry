@@ -1,13 +1,14 @@
 ################################################################################
 # plot_rxn_rates.jl
-# TYPE: SUPPORTING (plot maker)
+# TYPE: Analysis (optional)
 # WHICH: Equilibrium experiments
-# DESCRIPTION: Plots chemical reaction rates by altitude and reaction.
+# DESCRIPTION: Plots chemical reaction rates by altitude and reaction, total 
+# chemical production or consumption rates, total transport rates, 
 
 # Eryn Cangi
 # 5 April 2019
-# Last edited: 3 January 2020 (NOT DONE)
-# Currently tested for Julia: 0.7
+# Last edited: 11 September 2020
+# Currently tested for Julia: 1.4.1
 ################################################################################
 using PyPlot
 using HDF5
@@ -16,15 +17,23 @@ using PyCall
 using PlotUtils
 using JLD
 using Analysis
+using Photochemistry: Keddy, meanmass
+import Photochemistry.fluxcoefs, Photochemistry.Dcoef, Photochemistry.scaleH, Photochemistry.getflux
 
+patches = pyimport("matplotlib.patches")
+linez = pyimport("matplotlib.lines")
+
+# Parameters and modified reaction network =====================================
 include("PARAMETERS.jl")
-
-threebody(k0, kinf) = :($k0*M/(1+$k0*M/$kinf)*0.6^((1+(log10($k0*M/$kinf))^2)^-1.0))
-threebodyca(k0, kinf) = :($k0/(1+$k0/($kinf/M))*0.6^((1+(log10($k0/($kinf*M)))^2)^-1.0))
 
 # NOTE: You cannot use reactionnet as defined in PARAMETERS.jl. It has to be
 # this one here because we must change all the operators to be array operators.
-# Net last copied: 5 May 2020
+# Net last checked: Sept 2020
+# Also, the threebody functions must be as used here for the same reason.
+
+threebody(k0, kinf) = :($k0 .* M ./ (1 .+ $k0 .* M ./ $kinf).*0.6 .^ ((1 .+ (log10.($k0 .* M ./ $kinf)) .^2).^-1.0))
+threebodyca(k0, kinf) = :($k0 ./ (1 .+ $k0 ./ ($kinf ./ M)).*0.6 .^ ((1 .+ (log10.($k0 ./ ($kinf .* M))) .^2).^-1.0))
+
 reactionnet = [   #Photodissociation
              [[:CO2], [:CO, :O], :JCO2toCOpO],
              [[:CO2], [:CO, :O1D], :JCO2toCOpO1D],
@@ -45,8 +54,8 @@ reactionnet = [   #Photodissociation
              [[:H2O], [:H, :OH], :JH2OtoHpOH],
              [[:H2O], [:H2, :O1D], :JH2OtoH2pO1D],
              [[:H2O], [:H, :H, :O], :JH2OtoHpHpO],
-             [[:HDO], [:H, :OD], :JHDOtoHpOD], 
-             [[:HDO], [:D, :OH], :JHDOtoDpOH], 
+             [[:HDO], [:H, :OD], :JHDOtoHpOD],
+             [[:HDO], [:D, :OH], :JHDOtoDpOH],
              [[:HDO], [:HD, :O1D], :JHDOtoHDpO1D], # inspiration from Yung89
              [[:HDO], [:H, :D, :O], :JHDOtoHpDpO], # inspiration from Yung89
              [[:H2O2], [:OH, :OH], :JH2O2to2OH],
@@ -90,8 +99,8 @@ reactionnet = [   #Photodissociation
              [[:OH, :HD], [:HDO, :H], :((3 ./ 20.)*2.8e-12*exp.(-1800 ./ T))], # Yung88: rate (3/20)*H-ana. Sander2011: 5e-12*exp.(-2130 ./ T)
              [[:OH, :HD], [:H2O, :D], :((3 ./ 20.)*2.8e-12*exp.(-1800 ./ T))], # see prev line
              [[:OD, :H2], [:HDO, :H], :(2.8e-12*exp.(-1800 ./ T))], # Yung88: rate same as H-ana (assumed)
-             [[:OD, :H2], [:H2O, :D], :(0)], # Yung88 (assumed)
-             ### [[:OD, :HD], [:HDO, :D], :(???)],  # possibilities for which I 
+             # [[:OD, :H2], [:H2O, :D], :(0)], # Yung88 (assumed)
+             ### [[:OD, :HD], [:HDO, :D], :(???)],  # possibilities for which I
              ### [[:OD, :HD], [:D2O, :H], :(???)],  # can't find a rate...?
 
              # recombination of H. Use EITHER the first line OR the 2nd and 3rd.
@@ -113,7 +122,7 @@ reactionnet = [   #Photodissociation
              [[:D, :HO2], [:OH, :OD], :(0.71*7.2e-11)], # Yung88: rate 0.71*H-ana (assumed). verified Yung89 3/28/18 (base: 7.05, minor disagreement)
              [[:D, :HO2], [:HD, :O2], :(0.71*0.5*6.9e-12)], # Yung88: rate 0.71*H-ana (assumed). verified Yung89 3/28/18 (base 7.29, minor disagreement)
              [[:D, :HO2], [:HDO, :O1D], :(0.71*1.6e-12)], # Yung88: rate 0.71*H-ana (assumed). Changed to O1D to match what Mike put in 3rd line from top of this section.
-             [[:H, :DO2], [:HO2, :D], :(1e-10/(0.54*exp.(890 ./ T)))], # Yung88 (assumed) - turn off for Case 2
+             [[:H, :DO2], [:HO2, :D], :(1e-10 ./ (0.54*exp.(890 ./ T)))], # Yung88 (assumed) - turn off for Case 2
              [[:D, :HO2], [:DO2, :H], :(1.0e-10)], # Yung88. verified Yung89 3/28/18 - turn off for Case 2
 
              ## H + H2O2. deuterated analogues added 3/29
@@ -128,7 +137,7 @@ reactionnet = [   #Photodissociation
              [[:D, :H2O2], [:HDO, :OH], :(0.5*1.16e-11*exp.(-2110 ./ T))], # see previous line
              [[:D, :H2O2], [:H2O, :OD], :(0.5*1.16e-11*exp.(-2110 ./ T))], # see previous line
              [[:D, :HDO2], [:OD, :HDO], :(0.5*1.16e-11*exp.(-2110 ./ T))], # added 4/3 with assumed rate from other rxns
-             [[:D, :HDO2], [:OH, :D2O], :(0.5*1.16e-11*exp.(-2110/T))], # sourced from Cazaux et al
+             [[:D, :HDO2], [:OH, :D2O], :(0.5*1.16e-11*exp.(-2110 ./ T))], # sourced from Cazaux et al
 
              # Interconversion of odd H
              ## H + O2
@@ -165,7 +174,7 @@ reactionnet = [   #Photodissociation
              ## OH + H2O2
              [[:OH, :H2O2], [:H2O, :HO2], :(2.9e-12*exp.(-160 ./ T))], # NIST+KIDA 4/3/18, valid 240-460K. Yung89: 3.3e-12*exp.(-200/T). Sander2011 recommends an average value of 1.8e-12, but this seems too high for martian temps
              [[:OD, :H2O2], [:HDO, :HO2], :(2.9e-12*exp.(-160 ./ T))], # Yung88: same as H-ana (assumed)
-             [[:OD, :H2O2], [:H2O, :DO2], :(0)],  # Yung88 (assumed)
+             # [[:OD, :H2O2], [:H2O, :DO2], :(0)],  # Yung88 (assumed)
              [[:OH, :HDO2], [:HDO, :HO2], :(0.5*2.9e-12*exp.(-160 ./ T))], # Yung88: rate 0.5*H-ana.
              [[:OH, :HDO2], [:H2O, :DO2], :(0.5*2.9e-12*exp.(-160 ./ T))], # Yung88: rate 0.5*H-ana.
              ## HO2 + O3
@@ -174,18 +183,18 @@ reactionnet = [   #Photodissociation
              ## HO2 + HO2
              [[:HO2, :HO2], [:H2O2, :O2], :(3.0e-13*exp.(460 ./ T))], # Sander2011. Yung89: 2.3e-13*exp.(600/T). KIDA 230-420K: 2.2e-13*exp.(600/T)
              [[:DO2, :HO2], [:HDO2, :O2], :(3.0e-13*exp.(460 ./ T))], # Yung88: same as H-ana (assumed)
-             # *** why do we have he next two reactions? I forgot...
+             # *** why do we have the next two reactions? I forgot...
              [[:HO2, :HO2, :M], [:H2O2, :O2, :M], :(2*2.1e-33*exp.(920 ./ T))], # Sander2011.
              [[:HO2, :DO2, :M], [:HDO2, :O2, :M], :(2*2.1e-33*exp.(920 ./ T))], # added 3/13 with assumed same rate as H analogue
 
              ## OH + D or OD + H (no non-deuterated analogues)
-             [[:OD, :H], [:OH, :D], :(3.3e-9*(T.^-0.63)/(0.72*exp.(717 ./ T)))], # rate: Yung88. NIST (Howard82): 5.25E-11*(T/298).^-0.63  - turn off for Case 2
+             [[:OD, :H], [:OH, :D], :(3.3e-9*(T.^-0.63) ./ (0.72*exp.(717 ./ T)))], # rate: Yung88. NIST (Howard82): 5.25E-11*(T/298).^-0.63  - turn off for Case 2
              [[:OH, :D], [:OD, :H], :(3.3e-9*T.^-0.63)], # Yung88  - turn off for Case 2
 
              # CO2 recombination due to odd H (with HOCO intermediate)
              ## straight to CO2
-             [[:CO, :OH], [:CO2, :H], threebodyca(:(1.5e-13*(T/300.).^0.6),:(2.1e9*(T/300.).^6.1))], # Sander2011
-             [[:CO, :OD], [:CO2, :D], threebodyca(:(1.5e-13*(T/300.).^0.6),:(2.1e9*(T/300.).^6.1))], # Yung88: same as H-ana.
+             [[:CO, :OH], [:CO2, :H], threebodyca(:(1.5e-13 .* (T/300.).^0.6), :(2.1e9 .* (T/300.).^6.1))], # Sander2011
+             [[:CO, :OD], [:CO2, :D], threebodyca(:(1.5e-13 .* (T/300.).^0.6), :(2.1e9 .* (T/300.).^6.1))], # Yung88: same as H-ana.
              ### possible deuterated analogues below
              [[:OH, :CO], [:HOCO], threebody(:(5.9e-33*(T/300.).^-1.4),:(1.1e-12*(T/300.).^1.3))], # Sander2011
              [[:OD, :CO], [:DOCO], threebody(:(5.9e-33*(T/300.).^-1.4),:(1.1e-12*(T/300.).^1.3))],
@@ -198,7 +207,265 @@ reactionnet = [   #Photodissociation
              [[:CO2pl, :HD], [:CO2pl, :H, :D], :((2/5)*8.7e-10)]
              ]
 
-function make_ratexdensity(n_current, temparr, species, species_role)
+
+# Functions ====================================================================
+
+# CAUTION: ALL THESE FUNCTIONS ARE PASTED IN FROM converge_new_file.jl AND HEAVILY
+# MODIFIED TO WORK IN THIS SCRIPT. 
+function getflux(n_current, species, t, exptype)
+    #=
+    Special overload for this file
+    Returns a 1D array of fluxes in and out of a given altitude level for a 
+    given species. For looking at vertical distribution of fluxes, but it does 
+    not modify the concentrations.
+
+    n_current: Array; species number density by altitude
+    dz: Float64; layer thickness in cm
+    species: Symbol
+
+    returns: Array of raw flux value (#/cm^2/s) at each altitude layer
+    =#
+
+    # the temperature array needs to be made here
+    if exptype=="tropo"
+        thetemps = [meanTs, t, meanTe]
+    elseif exptype=="exo"
+        thetemps = [meanTs, meanTt, t]
+    elseif exptype=="surf"
+        thetemps = [t, meanTt, meanTe]
+    end
+
+    # we also need these effusion velocities to get the transport coefficients and boundary conditions
+    H_effusion_velocity = effusion_velocity(Tpiecewise(zmax, thetemps[1], thetemps[2], thetemps[3]), 1.0, zmax)
+    H2_effusion_velocity = effusion_velocity(Tpiecewise(zmax, thetemps[1], thetemps[2], thetemps[3]), 2.0, zmax)
+    D_effusion_velocity = effusion_velocity(Tpiecewise(zmax, thetemps[1], thetemps[2], thetemps[3]), 2.0, zmax)
+    HD_effusion_velocity = effusion_velocity(Tpiecewise(zmax, thetemps[1], thetemps[2], thetemps[3]), 3.0, zmax)
+
+    # Used for passing a variable speciesbcs function
+    v_eff = Dict("H"=>H_effusion_velocity, "D"=>D_effusion_velocity, 
+                 "H2"=>H2_effusion_velocity, "HD"=>HD_effusion_velocity)
+
+
+    # each element in thesecoefs has the format [downward, upward]
+    thesecoefs = [fluxcoefs(a, dz, species, n_current, thetemps, exptype) for a in alt[2:end-1]]
+
+    # set up this random variable surface_watersat that I need to have in there
+    Temp(z::Float64) = Tpiecewise(z, thetemps[1], thetemps[2], thetemps[3])
+    Temp_keepSVP(z::Float64) = Tpiecewise(z, meanTs, meanTt, meanTe)
+    H2Osat = map(x->Psat(x), map(Temp_keepSVP, alt)) # for holding SVP fixed
+    HDOsat = map(x->Psat_HDO(x), map(Temp_keepSVP, alt))  # for holding SVP fixed
+    sws = Dict("H2O"=>H2Osat[1], "HDO"=>HDOsat[1])
+    
+    # thesebcs has the format [lower bc; upper bc], where each row contains a 
+    # character showing the type of boundary condition, and a number giving its value
+    thesebcs = boundaryconditions(species, dz, n_current, sws, v_eff, 1.2e8, thetemps, exptype)
+
+    thesefluxes = fill(convert(Float64, NaN),length(intaltgrid))
+
+    # in the following line for the lowest layer: 
+    # first term is -(influx from layer above - outflux from this layer)
+    # second term is (-this layer's lower bc that depends on concentration + bc that doesn't depend on concentration)
+    thesefluxes[1] = (-(n_current[species][2]*thesecoefs[2][1]
+                        -n_current[species][1]*thesecoefs[1][2]) 
+                    +(-n_current[species][1]*thesebcs[1, 1]
+                      +thesebcs[1, 2]))/2.0
+    for ialt in 2:length(intaltgrid)-1
+        thesefluxes[ialt] = (-(n_current[species][ialt+1]*thesecoefs[ialt+1][1]  # coming in from above
+                               -n_current[species][ialt]*thesecoefs[ialt][2])    # leaving out to above layer
+                             +(-n_current[species][ialt]*thesecoefs[ialt][1]     # leaving to the layer below
+                               +n_current[species][ialt-1]*thesecoefs[ialt-1][2]))/2.0  # coming in from below
+    end
+    thesefluxes[end] = (-(thesebcs[2, 2]
+                          - n_current[species][end]*thesebcs[2, 1])
+                        + (-n_current[species][end]*thesecoefs[end][1]
+                           +n_current[species][end-1]*thesecoefs[end-1][2]))/2.0
+    return dz*thesefluxes
+end
+
+function fluxcoefs(z, dz, species, n_current, thetemps, exptype)
+    #=
+    Special overload for this file:
+    1) generates the coefficients K, D, T, Hs if they are not supplied (most common)
+    2) Allows passing in a specific temperature parameter (t) and experiment type
+
+    z: a specific altitude in cm
+    dz: thickness of an altitude later (2 km, but in cm)
+    species: the species for which to calculate the coefficient. Symbol
+    n_current: array of species densities by altitude, the current state of the atmosphere
+    t: the particular temperature parameter that is being varied to plot reaction rates
+    exptype: "exo" or "tropo", I guess you can do "surface" too
+
+    p: upper layer ("plus")
+    0: this layer
+    m: lower layer ("minus")
+    =#
+
+    ntp = n_tot(n_current, z+dz)
+    nt0 = n_tot(n_current, z)
+    ntm = n_tot(n_current, z-dz)
+    Kp = Keddy(z+dz, ntp)
+    K0 = Keddy(z, nt0)
+    Km = Keddy(z-dz, ntm)
+    Tp = Tpiecewise(z+dz, thetemps[1], thetemps[2], thetemps[3])
+    T0 = Tpiecewise(z, thetemps[1], thetemps[2], thetemps[3])
+    Tm = Tpiecewise(z-dz, thetemps[1], thetemps[2], thetemps[3])
+    Dp = Dcoef(Tp, ntp, species)
+    D0 = Dcoef(T0, nt0, species)
+    Dm = Dcoef(Tm, ntm, species)
+    Hsp = scaleH(z+dz, species, thetemps)
+    Hs0 = scaleH(z, species, thetemps)
+    Hsm = scaleH(z-dz, species, thetemps)
+    H0p = scaleH(z+dz, Tp, n_current)
+    H00 = scaleH(z, T0, n_current)
+    H0m = scaleH(z-dz, Tm, n_current)
+
+    # return the coefficients
+    return fluxcoefs(z, dz, [Km , K0, Kp], [Dm , D0, Dp], [Tm , T0, Tp],
+                     [Hsm, Hs0, Hsp], [H0m, H00, H0p], species)
+end
+
+function scaleH(z, species::Symbol, thetemps)
+    #=
+    Special overload for this file
+    Same as first scaleH, but for a particular atomic/molecular species.
+    =#  
+    T = Tpiecewise(z, thetemps[1], thetemps[2], thetemps[3])
+    mm = speciesmolmasslist[species]
+    return boltzmannK*T/(mm*mH*marsM*bigG)*(((z+radiusM)*1e-2)^2)*1e2
+end
+
+function boundaryconditions(species, dz, n_current, surf_watersat, v_eff, Of, thetemps, exptype)
+    #= 
+    Special overload for this file
+    =#
+
+    bcs = speciesbcs(species, surf_watersat, v_eff, Of)
+    if issubset([species],notransportspecies)
+        bcs = ["f" 0.; "f" 0.]
+    end
+
+    # first element returned corresponds to lower BC, second to upper
+    # BC transport rate. Within each element, the two rates correspond
+    # to the two equations
+    # n_b  -> NULL (first rate, depends on species concentration)
+    # NULL -> n_b  (second rate, independent of species concentration 
+    bcvec = Float64[0 0;0 0]
+
+    # LOWER
+    if bcs[1, 1] == "n"
+        bcvec[1,:]=[fluxcoefs(alt[2], dz, species, n_current, thetemps, exptype)[1],
+                    lower_up(alt[1], dz, species, n_current, thetemps, exptype)*bcs[1, 2]]
+    elseif bcs[1, 1] == "f"
+        bcvec[1,:] = [0.0, bcs[1, 2]/dz]
+    elseif bcs[1, 1] == "v"
+        bcvec[1,:] = [bcs[1, 2]/dz, 0.0]
+    else
+        throw("Improper lower boundary condition!")
+    end
+
+    # UPPER
+    if bcs[2, 1] == "n"
+        bcvec[2,:] = [fluxcoefs(alt[end-1],dz, species, n_current, thetemps, exptype)[2],
+                    upper_down(alt[end],dz, species, n_current, thetemps, exptype)*bcs[1, 2]]
+    elseif bcs[2, 1] == "f"
+            bcvec[2,:] = [0.0,-bcs[2, 2]/dz]
+    elseif bcs[2, 1] == "v"
+        bcvec[2,:] = [bcs[2, 2]/dz, 0.0]
+    else
+        throw("Improper upper boundary condition!")
+    end
+
+    return bcvec
+end
+
+function lower_up(z, dz, species, n_current, thetemps, exptype)
+    #= 
+    Special overload for this file
+    define transport coefficients for a given atmospheric layer for
+    transport from that layer to the one above. 
+    p: layer above ("plus"), 0: layer at altitude z, m: layer below ("minus") 
+
+    z: altitude in cm
+    dz: altitude layer thickness ("resolution"), in cm
+    species: Symbol; species for which this coefficients are calculated
+    n_current: Array; species number density by altitude
+
+    returns: array of fluxcoefs
+    =#
+    ntp = n_tot(n_current, z+dz)
+    nt0 = n_tot(n_current, z)
+    ntm = 1
+    Kp = Keddy(z+dz, ntp)
+    K0 = Keddy(z,nt0)
+    Km = 1
+    Tp = Tpiecewise(z+dz, thetemps[1], thetemps[2], thetemps[3])
+    T0 = Tpiecewise(z, thetemps[1], thetemps[2], thetemps[3])
+    Tm = 1
+    Dp = Dcoef(Tp, ntp, species)
+    D0 = Dcoef(T0, nt0, species)
+    Dm = 1
+    Hsp = scaleH(z+dz, species)
+    Hs0 = scaleH(z,species)
+    Hsm = 1
+    H0p = scaleH(z+dz, Tp, n_current)
+    H00 = scaleH(z, T0, n_current)
+    H0m = 1
+
+    # return the coefficients
+    return fluxcoefs(z, dz,
+              [Km , K0, Kp],
+              [Dm , D0, Dp],
+              [Tm , T0, Tp],
+              [Hsm, Hs0, Hsp],
+              [H0m, H00, H0p],
+              species)[2]
+end
+
+function upper_down(z, dz, species, n_current, thetemps, exptype)
+    #= 
+    Special overload for this file
+    define transport coefficients for a given atmospheric layer for
+    transport from that layer to the one below. 
+    p: layer above ("plus"), 0: layer at altitude z, m: layer below ("minus") 
+
+    z: altitude in cm
+    dz: altitude layer thickness ("resolution"), in cm
+    species: Symbol; species for which this coefficients are calculated
+    n_current: Array; species number density by altitude
+
+    returns: return of fluxcoefs
+    =#
+    ntp = 1
+    nt0 = n_tot(n_current, z)
+    ntm = n_tot(n_current, z-dz)
+    Kp = 1
+    K0 = Keddy(z, nt0)
+    Km = Keddy(z-dz, ntm)
+    Tp = 1
+    T0 = Tpiecewise(z, thetemps[1], thetemps[2], thetemps[3])
+    Tm = Tpiecewise(z-dz, thetemps[1], thetemps[2], thetemps[3])
+    Dp = 1
+    D0 = Dcoef(T0, nt0, species)
+    Dm = Dcoef(Tm, ntm, species)
+    Hsp = 1
+    Hs0 = scaleH(z, species)
+    Hsm = scaleH(z-dz, species)
+    H0p = 1
+    H00 = scaleH(z, T0, n_current)
+    H0m = scaleH(z-dz, Tm, n_current)
+
+    # return the coefficients
+    return fluxcoefs(z, dz,
+              [Km , K0, Kp],
+              [Dm , D0, Dp],
+              [Tm , T0, Tp],
+              [Hsm, Hs0, Hsp],
+              [H0m, H00, H0p],
+              species)[1]
+end
+
+# these functions written specifically for this script
+function make_ratexdensity(n_current, temparr, species, species_role, rxn_net)
     #=
     n_current: a given result file for a converged atmosphere
     temparr: Array of temperatures by altitude for the atmosphere
@@ -206,13 +473,15 @@ function make_ratexdensity(n_current, temparr, species, species_role)
     species_role: whether to lo look for the species as a reactant, product, or both
     =#
 
+    M_by_alt = sum([n_current[sp] for sp in fullspecieslist]) # for doing 3 body reactions
+
     rxn_dat =  Dict{String,Array{Float64, 1}}()
 
-    for rxn in reactionnet
+    for rxn in rxn_net
         reactants = rxn[1]
-        products = rxn[2]
+        products = rxn[2]  # vector of the product symbols
 
-        role = Dict("reactant"=>reactants, "product"=>products, 
+        role = Dict("reactant"=>reactants, "product"=>products,
                     "both"=>[reactants, products])
 
         if ~in(species, role[species_role])
@@ -224,124 +493,186 @@ function make_ratexdensity(n_current, temparr, species, species_role)
         prods = join(rxn[2], " + ")
         rxn_str = string(reacts) * " --> " * string(prods)
 
-        # calculate the reaction strength, which is the rate x density of least 
-        # dense species at given altitude.
+        # calculate the reaction strength, rate coefficient * species density.
+        # in standard notation, rate = k[A][B]...
         if typeof(rxn[3]) == Symbol # for photodissociation
-            alt_arr = n_current[rxn[1][1]]
+            alt_arr = n_current[rxn[1][1]] # gets reactant density by altitude
             rate_arr = n_current[rxn[3]]
             ratexdens = rate_arr .* alt_arr
             # put ratexdens in dictionary - photodissociation has only 1 reactant
             rxn_dat[rxn_str] = ratexdens
-        else  
-            # for reactions with more than one reactant. the procedure is to 
-            # multiply
-            
-            lowest_ratexdens = fill(9e50, (length(temparr)))
+        else
+            # for reactions with more than one reactant
+            ratexdens = ones(length(alt)-2)
+            j = 1
             for r in rxn[1]
                 if r != :M
-                    # species densities by altitude 
-                    alt_arr = n_current[r]
-
-                    # reaction rate: this is witchcraft and I forgot how I figured it out.
-                    rate = rxn[3]           # for regular rxns
-                    @eval ratefunc(T) = $rate
-                    rate_arr = Base.invokelatest(ratefunc, temparr)
-                    ratexdens = rate_arr .* alt_arr
-                    
-                    # reactions are limited by the lowest-density value, so must look for lowest value of ratexdens across reactants.
-                    # i verified that this works by looking at the ratexdens for O and O2 at element 39 in rxn O + O2 + N2.
-                    for i in range(1, length=length(ratexdens))
-                        if ratexdens[i] < lowest_ratexdens[i]
-                            lowest_ratexdens[i] = ratexdens[i]
-                        end
-                    end
-
+                    # species densities by altitude
+                    ratexdens .*= n_current[r]  # multiply by each reactant density
+                else
+                    ratexdens .*= M_by_alt
                 end
             end
-
-            # set all values of 9e50 to 0 since there was no lowest
-            for iter in eachindex(lowest_ratexdens)
-                if lowest_ratexdens[iter] == 9e50
-                    lowest_ratexdens[iter] = 0
-                end
-            end
-
-            rxn_dat[rxn_str] = lowest_ratexdens
+            rate = rxn[3]
+            @eval ratefunc(T, M) = $rate
+            rate_arr = Base.invokelatest(ratefunc, temparr, M_by_alt)
+            ratexdens .*= rate_arr
+            rxn_dat[rxn_str] = ratexdens
         end
     end
     return rxn_dat
 end
 
-# ==============================================================================
+function plot_chem_and_transport_rates(sp, T_param_array, exptype; plot_indiv_rxns=false, thresh=1e-6, xlims=[1e-4, 1e6, 1e0, 1e5])
+    #=
+    sp: species of interest (symbol)
+    T_param_array: Array of possible values of the temperature parameter as defined by exptype
+    exptype: whether the "surf", "tropo" or "exo" temperature is the parameter being examined
+    plot_indiv_rxns: whether to plot lines for the fastest chemical reactions. if false, only the total will be plotted.
+                     I don't recommend turning this parameter on
+    thresh: a threshhold of reaction rate. plot will only plot the reactions that have values above this threshhold
+    xlims: x-axis limits for the main axis that plots chemical reaction rate, and the 
+           secondary axis that plots flux. Order: [axis1min, axis1max, axis2min, axis2max]
+    =#
+    for t in T_param_array
 
-basepath = results_dir*"TradeoffPlots/Main Results/"
+        # ------------------------------------------------------------------------------
+        # Basic setup: set up the pathname for the readfile; establish temperature array
 
-# Do stuff for surface temperature 
-for Ts in collect(150:10:270)
+        temp_exp_id = Dict("surf"=>"temp_$(Int64(t))_$(meanTtint)_$(meanTeint)",
+                           "tropo"=>"temp_$(meanTsint)_$(Int64(t))_$(meanTeint)",
+                           "exo"=>"temp_$(meanTsint)_$(meanTtint)_$(Int64(t))")
 
-    # set up readfile and temperature array
-    readfile = basepath*"temp_$(Ts)_$(meanTtint)_$(meanTeint)/converged_temp_$(Ts)_$(meanTtint)_$(meanTeint).h5"
-    global alt=h5read(readfile,"n_current/alt")
+        this_temp_exp_folder = basepath * temp_exp_id[exptype] * "/"
+        readfile = this_temp_exp_folder*"converged_"*temp_exp_id[exptype]*".h5"
 
-    # make the temperature array
-    tempsbyalt = Array{Float64}(undef, length(alt)-2)
+        # temperature profile -----------------------------------------------------------
+        tempsbyalt = Array{Float64}(undef, length(alt)-2)
 
-    Temp(z::Float64) = Tpiecewise(z, Ts, meanTt, meanTe, "surf")
-    i = 1
-    for i in range(1, length=length(alt)-2)
-        tempsbyalt[i] = Temp(alt[i])
-        i += 1
-    end
+        temp_array = Dict("surf"=>[t, meanTt, meanTe],
+                          "tropo"=>[meanTs, t, meanTe],
+                          "exo"=>[meanTs, meanTt, t])
 
-    # retrieve the matrix and make the rate x density plot
-    ncur = get_ncurrent(readfile)
-    species_of_interest = :O3
-    role = "product"
-
-    rxd = make_ratexdensity(ncur, tempsbyalt, species_of_interest, role)
-
-    THRESHHOLD = 1e-50  # A given reaction must have a rate above this value at 
-                       # some point in the atmosphere to be plotted
-    fig, ax = subplots(figsize=(9,7))
-    subplots_adjust(wspace=0, bottom=0.25)
-    plot_bg(ax)
-    rxnlist = []
-    surfvallist = []
-    for kv in rxd
-        lbl = "$(kv[1])"
-        if any(x->x>THRESHHOLD, kv[2][1]) # this only counts reactions with a rate over 1.
-            push!(rxnlist, kv[1])
-            append!(surfvallist, kv[2][1])
+        i = 1
+        for i in range(1, length=length(alt)-2)
+            tempsbyalt[i] = Tpiecewise(alt[i], temp_array[exptype][1], temp_array[exptype][2], temp_array[exptype][3])
+            i += 1
         end
-    end
-    bar(rxnlist, surfvallist, zorder=10)
-    title("Reaction rates at the surface")
-    xlabel("Reaction")
-    xticks(rotation=45)
-    yscale("log")
-    ylim(1, 1e8)
-    ylabel("Reaction rate (#/cm^3/s) (check this)")
-    savefig(basepath*"reaction plots"*"/rxns_surface_$(Ts).png", bbox_inches="tight")
-    close(fig)
 
+        # --------------------------------------------------------------------------------
+        # Load the simulation's atmosphere array
+        ncur = get_ncurrent(readfile)
 
-    fig2, ax2 = subplots(figsize=(9,7))
-    subplots_adjust(wspace=0, bottom=0.25)
-    plot_bg(ax2)
-    for kv in rxd
-        lw = 1
-        ls = "-"
-        lbl = "$(kv[1])"
-        if any(x->x>THRESHHOLD, kv[2])
-            semilogx(kv[2], alt[1:length(alt)-2]./1e5, linestyle=ls, linewidth=lw, label=lbl)
+        # --------------------------------------------------------------------------------
+        # calculate reaction rates x density of the species at each level of the atmosphere.
+        
+        rxd_prod = make_ratexdensity(ncur, tempsbyalt, sp, "product", reactionnet)
+        rxd_consume = make_ratexdensity(ncur, tempsbyalt, sp, "reactant", reactionnet)
+
+        # ---------------------------------------------------------------------------------
+        # Calculate the fluxes for the species
+        fluxarray = getflux(ncur, sp, t, exptype)
+        
+        # ---------------------------------------------------------------------------------
+        # Plot reaction rates and transport rates by altitude
+
+        fig, ax = subplots(figsize=(8,6))
+        subplots_adjust(wspace=0, bottom=0.25)
+        plot_bg(ax)
+
+        # Calculate the total reactions per second for this species of interest
+        total_prod_rate = similar(tempsbyalt)
+        total_prod_rate .= 0
+        total_consume_rate = similar(tempsbyalt)
+        total_consume_rate .= 0
+
+        # Collect chem production equations and total 
+        for kv in rxd_prod  # loop through the dict of format reaction => [rates by altitude]
+            lbl = "$(kv[1])"
+            if plot_indiv_rxns == true
+                if any(x->x>thresh, kv[2])
+                    ax.semilogx(kv[2], alt[1:length(alt)-2]./1e5, linestyle="-", linewidth=1, label=lbl)
+                end
+            end
+            total_prod_rate += kv[2]
         end
+
+        # Collect chem consumption equations and total 
+        for kv in rxd_consume  # loop through the dict of format reaction => [rates by altitude]
+            lbl = "$(kv[1])"
+            if plot_indiv_rxns == true
+                if any(x->x>thresh, kv[2])
+                    ax.semilogx(kv[2], alt[1:length(alt)-2]./1e5, linestyle="-", linewidth=1, label=lbl)
+                end
+            end
+            total_consume_rate += kv[2]
+        end
+
+        # total_rate_normed = total_rate ./ [n_tot(ncur, z) for z in alt[1:length(alt)-2]]
+        ax.semilogx(total_prod_rate, alt[1:length(alt)-2]./1e5, color="black", linewidth=1)
+        ax.semilogx(total_consume_rate, alt[1:length(alt)-2]./1e5, color="gray", linewidth=1)
+
+        # now plot the flux with directionality at upper and lower boundaries of each layer.
+        # set the colors based on the value of the points
+        colors_flux = []
+        marks_flux = []
+        for f in fluxarray#net_up
+            if f < 0  # negative 
+                push!(colors_flux, "blue")
+                push!(marks_flux, "v")
+            elseif f > 0   # positive
+                push!(colors_flux, "red")
+                push!(marks_flux, "^")
+            elseif f == 0
+                push!(colors_flux, "gray")
+                push!(marks_flux, ".")
+            else
+                push!(colors_flux, "white")
+                push!(marks_flux, ",")
+            end  
+        end
+        ax2 = ax.twiny()
+        for side in ["top", "bottom", "left", "right"]
+            ax2.spines[side].set_visible(false)
+        end
+        ax2.set_xscale("log")
+        for i in range(1, length=length(fluxarray))
+            ax2.scatter(abs(fluxarray[i]), alt[2:end-1][i]/1e5, color=colors_flux[i], marker=marks_flux[i], zorder=10)
+        end
+
+        # make the legend
+        black_line = linez.Line2D([0], [0], color="black", linewidth=1, linestyle="-")
+        gray_line = linez.Line2D([0], [0], color="gray", linewidth=1, linestyle="-")
+        netfluxup = linez.Line2D([0], [0], color="red", marker="^", linewidth=0)
+        netfluxdown = linez.Line2D([0], [0], color="blue", marker="v", linewidth=0)
+        handles = [black_line, gray_line, netfluxup, netfluxdown]
+        labels = [ "Total chem production", "Total chem consumption", "Net flux up", "Net flux down"]
+        ax.legend(handles, labels)
+        
+        # labels and such 
+        ax.set_title("Chemistry and transport of $(string(sp)), T_$(exptype)=$(t)")
+        ax.set_xlim(xlims[1], xlims[2])
+        ax.set_ylabel("Altitude (km)")
+        ax.set_xlabel("Chemical reaction rate ("*L"cm^{-3}s^{-1})")
+        ax2.set_xlabel("Flux ("*L"cm^{-2}s^{-1})")
+        ax2.set_xlim(xlims[3], xlims[4])
+        savefig(results_dir*"ALL STUDY PLOTS/$(exptype)_chem_transport/$(sp)_reactions_$(Int64(t))K.png", bbox_inches="tight")
+        close(fig)
     end
-    title("Reaction rates vs. altitude")
-    # xlim(1e-12, 1e8)
-    ylabel("Altitude (km)")
-    xlabel("Reaction rate (#/cm^3/s) (check this)")
-    legend()
-    savefig(basepath*"reaction plots/"*"$(species_of_interest)_$(role)_reactions_Ts$(Ts).png", bbox_inches="tight")
-    close(fig)
 end
 
+# do the stuff ===================================================================
+basepath = results_dir*det_cases_dir
+
+Ts = [150., 160., 170., 180., 190., 200., 210., 220., 230., 240., 250., 260., 270.]
+Tt = [100., 110., 120., 130., 140., 150., 160.]
+Te = [150., 175., 200., 225., 250., 275., 300., 325., 350.]
+
+# plot_chem_and_transport_rates(:H, Tt, "tropo", plot_indiv_rxns=false, thresh=1e1, xlims=[1e-10, 1e6, 1e4, 1e9])
+# plot_chem_and_transport_rates(:D, Tt, "tropo", plot_indiv_rxns=false, thresh=1e-3, xlims=[1e-8, 1e2, 1e0, 1e5])
+
+# plot_chem_and_transport_rates(:H, Te, "exo", plot_indiv_rxns=false, thresh=1e1, xlims=[1e-10, 1e6, 1e4, 1e9])
+# plot_chem_and_transport_rates(:D, Te, "exo", plot_indiv_rxns=false, thresh=1e-3,  xlims=[1e-8, 1e2, 1e0, 1e6])
+
+plot_chem_and_transport_rates(:H, Ts, "surf", plot_indiv_rxns=false, xlims=[1e-10, 1e6, 1e4, 1e9])
+plot_chem_and_transport_rates(:D, Ts, "surf", plot_indiv_rxns=false, xlims=[1e-8, 1e2, 1e0, 1e6])

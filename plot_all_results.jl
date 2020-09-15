@@ -24,26 +24,32 @@ using DataFrames
 include("PARAMETERS.jl")
 
 # fundamental constants ========================================================
+# WARNING: these are hard-coded in because I'm lazy
 global tvals = Dict("surface"=>[150.0, 160.0, 170.0, 180.0, 190.0, 200.0, 210.0, 220.0,
                                 230.0, 240.0, 250.0, 260.0, 270.0],
-                    "tropopause"=>[100.0, 110.0, 120.0, 130.0, #70.0, 80.0, 90.0,
+                    "tropopause"=>[100.0, 110.0, 120.0, 130.0,
                                    140.0, 150.0, 160.0],
                     "exobase"=>[150.0, 175.0, 200.0, 225.0, 250.0, 275.0,
                                 300.0, 325.0, 350.0])
 global Oflux_vals = ["8e7", "9e7", "1.0e8", "1.1e8", "1.2e8", "1.3e8",
                             "1.4e8", "1.5e8", "1.6e8"]
 
-global watervals = [1, 10, 25, 50, 100]#, 150]
-global watervals_str = ["1.32e-5", "1.38e-4", "3.63e-4", "8.05e-4", "2.76e-3"]#, "1.358e-2"]
+# SUPER warning: watervals_str is hardcoded in. It's the mixing ratio of the
+# equivalent ppm. It's done this way because it would have been way too hard to 
+# set up a profile by specifying ppm, so what I would do is enter random mixing
+# ratios and let the profile be created and then check how many ppm it was.
+# Is this super incredibly hamfisted? YEP but it was easier than the alternative.
+global watervals = [1, 10, 25, 50, 100]  # in ppm.
+global watervals_str = ["1.32e-5", "1.38e-4", "3.63e-4", "8.05e-4", "2.76e-3"]  # mixing ratio
 
 # nominal value plot location or index, 1-indexed for Julia
 global nom_i_julia = Dict("exobase"=>meanTe, "tropopause"=>meanTt, "surface"=>meanTs,
-                   "O flux"=>findfirst(isequal("1.2e8"), Oflux_vals),
-                   "water"=>10)
+                          "O flux"=>findfirst(isequal("1.2e8"), Oflux_vals),
+                          "water"=>10)
 # Passing the values to PyPlot requires 0-indexing so here it is:
 global nom_i_py = Dict("exobase"=>meanTe, "tropopause"=>meanTt, "surface"=>meanTs,
-                "O flux"=>findfirst(isequal("1.2e8"), Oflux_vals)-1,
-                "water"=>10)
+                       "O flux"=>findfirst(isequal("1.2e8"), Oflux_vals)-1,
+                       "water"=>10)
 
 # set the data for comparison. Order:
 # CO MR (Trainer+2019), O2 MR (Trainer+2019), H2 abundance (Kras&Feldman 2001),
@@ -86,7 +92,8 @@ end
 # The main results plotting function -------------------------------------------
 function plot_results_caltech_together(base)
     #=
-    Plots the thermal and thermal+nonthermal results together in the same plot.
+    Plots the thermal and thermal+nonthermal results together in the same plot,
+    with comparison of past studies too.
 
     base: the folder of results
     =#
@@ -104,9 +111,9 @@ function plot_results_caltech_together(base)
         filetouse = base*F*"/converged_"*F*".h5"
 
         # calculate f
-        f_surf[i, 2] = calculate_f(filetouse, "thermal", [Ts, meanTt, meanTe], Oflux)
-        f_surf[i, 3] = calculate_f(filetouse, "both", [Ts, meanTt, meanTe], Oflux)
-        f_surf[i, 4] = calculate_f(filetouse, "nonthermal", [Ts, meanTt, meanTe], Oflux)
+        f_surf[i, 2] = calculate_f(filetouse, "thermal", [Ts, meanTt, meanTe])
+        f_surf[i, 3] = calculate_f(filetouse, "both", [Ts, meanTt, meanTe])
+        f_surf[i, 4] = calculate_f(filetouse, "nonthermal", [Ts, meanTt, meanTe])
         i += 1
     end
 
@@ -120,9 +127,9 @@ function plot_results_caltech_together(base)
         filetouse = base*F*"/converged_"*F*".h5"
 
         # calculate f
-        f_tropo[i, 2] = calculate_f(filetouse, "thermal", [meanTs, Tt, meanTe], Oflux)
-        f_tropo[i, 3] = calculate_f(filetouse, "both", [meanTs, Tt, meanTe], Oflux)
-        f_tropo[i, 4] = calculate_f(filetouse, "nonthermal", [meanTs, Tt, meanTe], Oflux)
+        f_tropo[i, 2] = calculate_f(filetouse, "thermal", [meanTs, Tt, meanTe])
+        f_tropo[i, 3] = calculate_f(filetouse, "both", [meanTs, Tt, meanTe])
+        f_tropo[i, 4] = calculate_f(filetouse, "nonthermal", [meanTs, Tt, meanTe])
         i += 1
     end
 
@@ -136,15 +143,15 @@ function plot_results_caltech_together(base)
         filetouse = base*F*"/converged_"*F*".h5"
 
         # calculate f
-        f_exo[i, 2] = calculate_f(filetouse, "thermal", [meanTs, meanTt, Te], Oflux)
-        f_exo[i, 3] = calculate_f(filetouse, "both", [meanTs, meanTt, Te], Oflux)
-        f_exo[i, 4] = calculate_f(filetouse, "nonthermal", [meanTs, meanTt, Te], Oflux)
+        f_exo[i, 2] = calculate_f(filetouse, "thermal", [meanTs, meanTt, Te])
+        f_exo[i, 3] = calculate_f(filetouse, "both", [meanTs, meanTt, Te])
+        f_exo[i, 4] = calculate_f(filetouse, "nonthermal", [meanTs, meanTt, Te])
         i += 1
     end
 
     # get high and low f in water
-    f_water = Array{Float64}(undef, 5, 4) #array to store f
-    waterfolders = search_subfolders(base, r"water_\d.+")#r"water_[0-9]+\.[0-9]+e-[0-9]")
+    f_water = Array{Float64}(undef, 5, 4) # array to store f
+    waterfolders = search_subfolders(base, r"water_\d.+")
     i = 1
     for w in waterfolders
 
@@ -156,9 +163,9 @@ function plot_results_caltech_together(base)
 
         # calculate f
         f_water[i, 1] = parse(Float64, watermr)
-        f_water[i, 2] = calculate_f(filetouse, "thermal", [meanTs, meanTt, meanTe], Oflux)
-        f_water[i, 3] = calculate_f(filetouse, "both", [meanTs, meanTt, meanTe], Oflux)
-        f_water[i, 4] = calculate_f(filetouse, "nonthermal", [meanTs, meanTt, meanTe], Oflux)
+        f_water[i, 2] = calculate_f(filetouse, "thermal", [meanTs, meanTt, meanTe])
+        f_water[i, 3] = calculate_f(filetouse, "both", [meanTs, meanTt, meanTe])
+        f_water[i, 4] = calculate_f(filetouse, "nonthermal", [meanTs, meanTt, meanTe])
         i += 1
     end
 
@@ -171,9 +178,9 @@ function plot_results_caltech_together(base)
     mn = base * "temp_$(meanTsint)_$(meanTtint)_$(meanTeint)/converged_temp_$(meanTsint)_$(meanTtint)_$(meanTeint).h5"
 
     # the f calculations for thermal 
-    f_mean_thermal = calculate_f(mn, "thermal", [meanTs, meanTt, meanTe], Oflux)
-    f_mean_both = calculate_f(mn, "both", [meanTs, meanTt, meanTe], Oflux)
-    f_mean_nonthermal = calculate_f(mn, "nonthermal", [meanTs, meanTt, meanTe], Oflux)
+    f_mean_thermal = calculate_f(mn, "thermal", [meanTs, meanTt, meanTe])
+    f_mean_both = calculate_f(mn, "both", [meanTs, meanTt, meanTe])
+    f_mean_nonthermal = calculate_f(mn, "nonthermal", [meanTs, meanTt, meanTe])
 
     f_thermal = DataFrame(Exp=["Surface", "Tropopause", "Exobase", "Water", ""],
                           Min=[minimum(f_surf[:, 2]), minimum(f_tropo[:, 2]), 
@@ -379,19 +386,20 @@ function make_std_atmo_dict(abs_or_mr)
     tfile = detailed_results_dir*"temp_$(meanTsint)_$(meanTtint)_$(meanTeint)/converged_temp_$(meanTsint)_$(meanTtint)_$(meanTeint).h5"
     ncur =  get_ncurrent(tfile)
 
+    # N0 and Ntop are the total atmospheric density at surface and exobase.
     N0 = abs_or_mr == "abs" ? 1 : n_tot(ncur, 0, n_alt_index)
     Ntop = abs_or_mr == "abs" ? 1 : n_tot(ncur, zmax, n_alt_index)
-    LA = collect(0e5:2e5:78e5)
+    LA = collect(0e5:dz:78e5)
 
     atmo_metric_dict = Dict("O2"=>[], "HD"=>[], "H2"=>[], "H2MR"=>[], "H"=>[], "D"=>[], "CO"=>[],
-                     "Hflux"=>[], "Dflux"=>[], "f"=>[], "CO/O2"=>[], "O3"=>[],
-                     "DH"=>[])
+                            "Hflux"=>[], "Dflux"=>[], "f"=>[], "CO/O2"=>[], "O3"=>[],
+                            "DH"=>[])
     DHprofs = Array{Any}(undef, 1, length(alt)-2)
 
     # Calculate the things we care about
     # H and D fluxes
-    Hf, contrib_H = get_flux(:H, tfile, 1.2e8, meantemps, therm_only=true)
-    Df, contrib_D = get_flux(:D, tfile, 1.2e8, meantemps, therm_only=true)
+    Hf, contrib_H = get_flux(:H, tfile, meantemps, therm_only=true)
+    Df, contrib_D = get_flux(:D, tfile, meantemps, therm_only=true)
     append!(atmo_metric_dict["Hflux"], Hf)
     append!(atmo_metric_dict["Dflux"], Df)
 
@@ -456,7 +464,6 @@ function analyze_water(abs_or_mr, allDbearers, make_plots=false, path=detailed_r
     wpaths = [path*"water_"*w for w in watervals_str]
     wfilelist = [path*"water_"*w*"/converged_water_"*w*".h5" for w in watervals_str]
     temps = [meanTs, meanTt, meanTe]
-    oflux = 1.2e8
     q = abs_or_mr == "abs" ? " abundance" : " mixing ratio" # for labels
     mean_idx = findfirst(isequal(10), watervals) - 1
     subfolder = abs_or_mr == "abs" ? "abs/" : "mr/"
@@ -479,18 +486,14 @@ function analyze_water(abs_or_mr, allDbearers, make_plots=false, path=detailed_r
         # get the current array
         ncur = get_ncurrent(wfile)
 
-        # if filling the absolute quantity arrays, subtract the flux loss.
-        # subtract_flux is a binary value that is multiplied by the contribution value
-        # to avoid writing excess if/then statements.
-        subtract_flux = abs_or_mr == "abs" ? 1 : 0
         N0 = abs_or_mr == "abs" ? 1 : n_tot(ncur, 0, n_alt_index)
         Ntop = abs_or_mr == "abs" ? 1 : n_tot(ncur, 250e5, n_alt_index)
         LA = collect(0e5:2e5:78e5)
 
         # Calculate the things we care about
         # H and D fluxes
-        Hf, contrib_H = get_flux(:H, wfile, oflux, temps, therm_only=true)
-        Df, contrib_D = get_flux(:D, wfile, oflux, temps, therm_only=true)
+        Hf, contrib_H = get_flux(:H, wfile, temps, therm_only=true)
+        Df, contrib_D = get_flux(:D, wfile, temps, therm_only=true)
         append!(wdict["Hflux"], Hf)
         append!(wdict["Dflux"], Df)
 
@@ -605,8 +608,8 @@ function analyze_Oflux(abs_or_mr, allDbearers, make_plots=false, path=detailed_r
 
         # Calculate the things we care about
         # H and D fluxes
-        Hf, contrib_H = get_flux(:H, ofile, oflux, temps, therm_only=true)
-        Df, contrib_D = get_flux(:D, ofile, oflux, temps, therm_only=true)
+        Hf, contrib_H = get_flux(:H, ofile, temps, therm_only=true)
+        Df, contrib_D = get_flux(:D, ofile, temps, therm_only=true)
         append!(odict["Hflux"], Hf)
         append!(odict["Dflux"], Df)
 
@@ -705,7 +708,6 @@ function analyze_T(abs_or_mr, allDbearers, make_plots=false, path=detailed_resul
         end
     end
     meanT = Dict("surface"=>meanTs, "tropopause"=>meanTt, "exobase"=>meanTe)  # nominal
-    oflux = 1.2e8
     q = abs_or_mr == "abs" ? " abundance " : " mixing ratio " # set label
     subfolder = abs_or_mr == "abs" ? "abs/" : "mr/"
 
@@ -743,8 +745,8 @@ function analyze_T(abs_or_mr, allDbearers, make_plots=false, path=detailed_resul
 
             # Calculate the things we care about
             # H and D fluxes
-            Hf, contrib_H = get_flux(:H, tfile, oflux, temps, therm_only=true)
-            Df, contrib_D = get_flux(:D, tfile, oflux, temps, therm_only=true)
+            Hf, contrib_H = get_flux(:H, tfile, temps, therm_only=true)
+            Df, contrib_D = get_flux(:D, tfile, temps, therm_only=true)
             append!(tdict["Hflux"], Hf)
             append!(tdict["Dflux"], Df)
 
@@ -811,6 +813,9 @@ end
 # make_small_Oflux_plots, make_small_T_plots
 function DH_alt_prof_plot(DHproflist, exps, v, s, optext="", optlegend="")
     #=
+    Makes a plot of D/H in the atomic species as a function of altitude.
+    NOTE: Plots not used in paper and may not look super pretty.
+
     DHproflist: An array with D/H profiles in each row
     exps: a list of experiment identifiers as strings
     v: water, Oflux, or temp (for putting in correct folder)
@@ -820,7 +825,6 @@ function DH_alt_prof_plot(DHproflist, exps, v, s, optext="", optlegend="")
             folder but the files also specify exobase, tropopause, etc.
     optlegend: an optional string to put into the legend
     =#
-    # do the DH altitudinal profile plot
     # set up plot
     fig, ax = subplots(figsize=(6,4))
     plot_bg(ax)
@@ -858,6 +862,9 @@ end
 
 function CO_O2_plot(xvals, ydict, xlab, pathkey, meanX, s, tempkey="")
     #=
+    Plots CO/O2 ratio at surface as a function of the experiment parameter.
+    NOTE: Only used for analysis, not shown in paper. Plots not super pretty.
+
     xvals: the variations within the experiment. list of strings
     ydict: the dictionary containing the data
     xlab: label for the x axis
@@ -869,10 +876,10 @@ function CO_O2_plot(xvals, ydict, xlab, pathkey, meanX, s, tempkey="")
 
     # Pretty ugly, but data structs are always better than if/else, right?
     paststudies = Dict("water"=>Dict("yung"=>15, "nair"=>[3,8.8]), # these are in pr μm
-                            "Oflux"=>Dict("yung"=>5, "nair"=>9), # indices
-                            "temp_surface"=>Dict("yung"=>220, "nair"=>214),
-                            "temp_tropopause"=>Dict("yung"=>140, "nair"=>140),
-                            "temp_exobase"=>Dict("yung"=>364, "nair"=>288))
+                       "Oflux"=>Dict("yung"=>5, "nair"=>9), # indices
+                       "temp_surface"=>Dict("yung"=>220, "nair"=>214),
+                       "temp_tropopause"=>Dict("yung"=>140, "nair"=>140),
+                       "temp_exobase"=>Dict("yung"=>364, "nair"=>288))
 
     lookupkey = pathkey*tempkey
     ystr = s == "abs/" ? L"Abundance, CO and O$_2$" : L"Mixing ratio, CO and O$_2$"
@@ -956,6 +963,8 @@ end
 function make_small_water_plots(water_x, d, DHdata, q, nom_i, s)
     #=
     Makes the plots for water vapor experiments
+    NOTE: This code hasn't been cleaned up in a while. It works but it's probably
+          not elegant.
 
     water_x: a list of the water mixing ratios, in string format
     d: a dictionary of values of different measurables as function of
@@ -1036,6 +1045,9 @@ end
 function make_small_Oflux_plots(phiO, phiO_str, d, DHdata, q, nom_i, s)
     #=
     Makes the plots for O flux variation experiment
+    NOTE: This code hasn't been cleaned up in a while. It works but it's probably
+          not elegant.
+
     phiO: a list of the O flux values
     phiO_str: same thing but strings, used for plotting
     d: a dictionary of values of different measurables as function of
@@ -1114,6 +1126,9 @@ end
 function make_small_T_plots(T, T_str, d, DHdata, exp, q, nomT, s)
     #=
     Makes the plots for temperature variation experiment
+    NOTE: This code hasn't been cleaned up in a while. It works but it's probably
+          not elegant.
+
     d: a dictionary of values of different measurables as function of
        temperatures at 3 points in atmosphere: surface, tropopause, exobase
     DHdata: altitude profiles of D/H by experiment.
@@ -1341,7 +1356,14 @@ end
 # Key results plots for detailed cases, water vapor:
 function make_water_Hspecies_plot(output_dict, abs_or_mr)
     #=
-    Plot showing H, D, HD, H2, ΦH and ΦD as relative to the global mean profile
+    Plot showing H, D, HD, H2, ΦH and ΦD variations normalized to the global 
+    standard atmosphere.
+
+    output_dict: This is the big dictionary of various atmospheric metrics. 
+                 Same format as what's created in make_std_atmo_dict 
+    abs_or_mr: Indicates whether the plotted information was based on mixing ratio
+               or absolute abundance. Passed in because it needs to go into plot
+               file names.
     =#
 
     # to do the division/normalization we need to re-find the index of the value
@@ -1417,7 +1439,18 @@ function make_water_Hspecies_plot(output_dict, abs_or_mr)
 end
 
 function make_water_output_vs_data(output_MR, output_abs)
-    #=TODO: Fill me in=#
+    #=
+    Makes a plot of certain atmospheric species in the model as compared to 
+    data and/or other modeling output. The species are CO and O2 at the surface,
+    H2 mixing ratio in the lower atmosphere as per Krasnopolsky 2001, and O3 at 
+    the surface.
+
+    output_MR: dictionary with species of interest by altitude, as in 
+    make_std_atmo_dict, for the mixing ratio values only, for a given experiment.
+    output_abs:  same but for absolute abundance only. 
+
+    Both are used in making the plot so we pass both in.
+    =#
     rcParams["font.family"] = "sans-serif"
     rcParams["font.sans-serif"] = ["Louis George Caf?"]
     rcParams["font.monospace"] = ["FreeMono"]
@@ -1436,7 +1469,6 @@ function make_water_output_vs_data(output_MR, output_abs)
     # calculate the relativeness of each point wrt data
     COdiff = (output_MR["CO"] .- data[1])/s[1]
     O2diff = (output_MR["O2"] .- data[2])/s[2]
-    # H2diff = (ABSdictvar["H2"] .- data[3])/s[3]  # absolute abundance
     H2diff = (output_MR["H2MR"]./1e-6 .- data[3])/s[3] # ppm
     O3diff = (areadensity_to_micron_atm(output_abs["O3"]) .- data[4])/s[4]
 
@@ -1464,7 +1496,10 @@ end
 
 function make_water_f_plot(output_MR)
     #=
-    f as a function of water vapor
+    f as a function of water vapor!
+
+    output_MR: same dictionary as in make_std_atmo_dict, but for various water
+    vapor experiments.
     =#
 
     # make plots pretty
@@ -1480,14 +1515,10 @@ function make_water_f_plot(output_MR)
     plot_bg(ax)
     
     ax.plot(watervals, output_MR["f"], marker="o", ms=sz, color=f_main_color, zorder=10)
-    # ax.yaxis.set_major_locator(matplotlib.ticker.MultipleLocator(20))
-    # ax.yaxis.set_minor_locator(matplotlib.ticker.MultipleLocator(10))
-    ax.set_ylim(0.0015, 0.002)
 
-    # ax.set_yticks([0.0015, 0.0016, 0.0017, 0.0018, 0.0019, 0.002])
+    ax.set_ylim(0.0015, 0.002)
     ax.axvline(nom_i_py["water"], color=medgray, zorder=5)
     ax.text(9, 0.00198, "Standard\ntemperature", color=medgray, ha="right", va="top")
-
     ax.set_xscale("log")
     ax.tick_params(axis="y", labelcolor=f_main_color, which="both")
     ax.set_ylabel(L"$f$", color="black")
@@ -1515,6 +1546,10 @@ function make_water_loss_contribs_plot(output_abs)
     #=
     Make a plot showing how much H, D, HD, and H2 contribute to loss of H, D in the water
     experiments.
+
+    output_abs: same dictionary as in make_std_atmo_dict, but for the given 
+                experiment. since we are focusing on the absolute contributions,
+                it has to be for absolute abundance.
     =#
 
     # make plots pretty
@@ -1528,7 +1563,7 @@ function make_water_loss_contribs_plot(output_abs)
 
     mpltic = pyimport("matplotlib.ticker")
 
-    # FIGURE: Just exobase =======================================================================
+    # FIGURE: plot itttttt =====================================================
     fig, ax = subplots(1, 2, sharex=true, sharey=true, figsize=(14, 5))
 
     for i in 1:2
@@ -1570,7 +1605,6 @@ function make_water_loss_contribs_plot(output_abs)
     # plot panel labels ------------------------------------------
     ax[1].text(0.8, 0.1, L"H_2", color=H2color_dark, transform=ax[1].transAxes, va="top", fontsize=24, zorder=20)
     ax[2].text(0.8, 0.1, "HD", color=HDcolor, transform=ax[2].transAxes, va="top", fontsize=24, zorder=20)
-    # ax[2].plot([335, 345], [0.06, 0.02], color=HDcolor)
 
     ax[1].text(0.01, 1, "a", color="black", fontsize=26, weight="bold", va="top", zorder=20, transform=ax[1].transAxes)
     ax[2].text(0.01, 1, "b", color="black", fontsize=26, weight="bold", va="top", zorder=20, transform=ax[2].transAxes)
@@ -1580,14 +1614,15 @@ end
 # Key results plots for detailed cases, temperatures:
 function make_T_Hspecies_plot(output_dict, abs_or_mr)
     #=
-    Plot showing H, D, HD, H2, ΦH and ΦD as relative to the global mean profile
+    Plot showing H, D, HD, H2, ΦH and ΦD, normalized to the global standard atmosphere
+
+    Inputs: same formats as make_water_Hspecies_plot
     =#
 
     # where to place text, basically.
     exps = ["surface", "tropopause", "exobase"]
     gmean_txt_loc = Dict("surface"=>[219, 1.4], "tropopause"=>[131, 1.9],
                          "exobase"=>[210, 100])
-    # ylims = Dict("surface"=>[-10, 190], "tropopause"=>[-4, 4.2], "exobase"=>[-4, 4.2])
     xt_args = Dict("surface"=>150:20:280, "tropopause"=>100:10:160,
                    "exobase"=>150:50:350)
     if abs_or_mr == "mr"
@@ -1608,9 +1643,9 @@ function make_T_Hspecies_plot(output_dict, abs_or_mr)
                               fluxD=[[160, 0.7], [100, 0.7],  [145, 0.1]])
     end
 
-     # colors for each
-     # order: H, D, H2, HD, ΦH, ΦD.
-    c = [Hcolor, Dcolor, H2color, HDcolor, Hflux_color, Dflux_color] # H species #3, colorblind safe
+    # colors for each
+    # order: H, D, H2, HD, ΦH, ΦD.
+    c = [Hcolor, Dcolor, H2color, HDcolor, Hflux_color, Dflux_color] # H species #3 in coolors or wherever I saved it. colorblind safe
     # to do the division/normalization we need to re-find the index of the value
     # against which to normalize. To do this, look in the xvals by experiment,
     # then index that according to whether we cut it or not. There doesn't seem
@@ -1705,8 +1740,7 @@ end
 
 function make_T_output_vs_data(output_MR, output_abs)
     #=
-    Makes the plots comparing simulation output with observational data.
-
+    Same as make_water_output_vs_data but for temperature experiments.
     =#
 
     # set up
@@ -1738,7 +1772,6 @@ function make_T_output_vs_data(output_MR, output_abs)
     fig, ax = subplots(1, 3, sharex=false, sharey=false, figsize=(21, 5))
     subplots_adjust(wspace=0.15)
 
-
     for i in 1:3
         plot_bg(ax[i])
         ex = exps[i]
@@ -1746,7 +1779,6 @@ function make_T_output_vs_data(output_MR, output_abs)
         # calculate the relativeness of each point wrt data
         COdiff = (output_MR[ex]["CO"] .- data[1])/s[1]
         O2diff = (output_MR[ex]["O2"] .- data[2])/s[2]
-        # H2diff = (ABSdictvar["H2"] .- data[3])/s[3]  # absolute abundance
         H2diff = (output_MR[ex]["H2MR"]./1e-6 .- data[3])/s[3] # ppm
         O3diff = (areadensity_to_micron_atm(output_abs[ex]["O3"]) .- data[4])/s[4]
 
@@ -1800,7 +1832,8 @@ end
 
 function make_T_f_plot(output_MR)
     #=
-    makes a 3-panel plot of the tradeoff of f.
+    makes a 3-panel plot of the tradeoff of f by temperature experiment, similar
+    to make_water_f_plot.
     =#
 
     # make plots pretty
@@ -1842,7 +1875,6 @@ function make_T_f_plot(output_MR)
         ax[i].xaxis.set_minor_locator(mpltic.MultipleLocator(minor_mult[ex]))
         ax[i].set_xticks(xt_args[ex][1]:xt_args[ex][2]:xt_args[ex][3], minor=false)
         ax[i].tick_params(axis="y", labelcolor=f_main_color, which="both")
-        # ax[i].tick_params(axis="x", which="both")
 
         ax[i].set_yscale("log")
         ax[i].set_ylim(ylims[ex][1], ylims[ex][2])
@@ -1944,25 +1976,6 @@ function make_T_loss_contribs_plot(output_abs)
         ax[2, i].set_yscale("log")
         ax[1, 1].set_ylabel("Fraction of total loss", fontsize=24)
         ax[2, 1].set_ylabel("Fraction of total loss", fontsize=24)
-
-
-        # println("H loss percentages:")
-        # println("H contrib: ", output_abs[ex]["H>Hloss"])
-        # println("H2 contrib: ", output_abs[ex]["H2>Hloss"])
-        # println("HD contrib: ", output_abs[ex]["HD>Hloss"])
-        # println("H frac of loss: ", Hfrac)
-        # println("H2 frac of loss: ", H2frac)
-        # println("HD frac of loss: ", HDfrac)
-        # println()
-
-        # println("Total D flux: ", total_D_flux)
-        # println("D contribution: ", output_abs[ex]["D>Dloss"])
-        # println("HD contribution: ", output_abs[ex]["HD>Dloss"])
-        # println("D loss percentages:")
-        # println("D frac of loss: ", Dfrac)  # this is completely fucked up
-        # println("HD frac of loss: ", HDfrac)
-        # println()
-        # println()
     end
 
     # plot panel labels
@@ -1976,7 +1989,7 @@ function make_T_loss_contribs_plot(output_abs)
     ax[2, 3].text(150, 1, "f", color="black", fontsize=26, weight="bold", va="top", zorder=15)
     savefig(detailed_results_dir*"loss_contributions_all.png", bbox_inches="tight")
 
-    # FIGURE: Just exobase =======================================================================
+    # FIGURE: plot =============================================================
     fig, ax = subplots(1, 2, sharex=true, sharey=true, figsize=(14, 5))
     subplots_adjust(wspace=0.05)
     ex = "exobase"
@@ -2040,13 +2053,19 @@ println("Enter a folder to use, no slashes (e.g. Research/Results/DetailedCases/
 append_me = readline(stdin)
 detailed_results_dir = results_dir*"DetailedCases/"*append_me*"/"
 
-makeplots = true   # whether to make the individiual small plots, one per species/measurable,
-                    # that go with each experiment
-other_deuterated = false  # set to true to look at minor D-carrying species. 
-                          # WARNING: not implemented for main results plots, only for 
-                          # the small supplemental plots!
-write_new_files = true  # set to true if running for first time after new simulations
+# whether to make the individiual small plots, one per species/measurable,
+# that go with each experiment
+makeplots = false   
 
+# set to true to look at minor D-carrying species. 
+# WARNING: not implemented for main results plots, only for 
+# the small supplemental plots! I just didn't really need it.   
+other_deuterated = false  
+
+# set to true if running for first time after new simulations
+write_new_files = false  
+
+# FOR EACH EXPERIMENTAL PARAMETER (water, temp)...:
 # 0. small supplemental plots (not used in paper)
 # 1. f as a function of parameter (e.g. temperature or water vapor)
 # 2. atomic/molecular H/D and fluxes compared across the simulations 
@@ -2054,7 +2073,7 @@ write_new_files = true  # set to true if running for first time after new simula
 #    abs = data stored as absolute quantities; both are used in results
 # 3. Comparison of model output of CO, O2, O3, H2 to data in lit
 # 4. Plots showing the contribution of molecular and atomic H, D to loss
-#    Only the exobase case of this plot is used in the paper in Supplementary Info.
+#    Only the exobase case of this plot is used in the paper in Supporting Info.
 
 # WATER
 println("Analyzing water model output, building dicts, making small plots")
@@ -2069,7 +2088,7 @@ make_water_loss_contribs_plot(water_data_abs)
 println()
 
 
-# O2  TODO: update this
+# O2  NOTE: not updated because I stopped needing to check these plots
 # println()
 # println("Analyzing O flux model output, building dicts, making supporting plots")
 # o_data_abs = analyze_Oflux("abs", other_deuterated, makeplots)

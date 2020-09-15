@@ -18,6 +18,14 @@ using JLD
 include("PARAMETERS.jl")
 
 function h2olost(cur_h2o, DHnow=5.5, DH0=1, f=0.001)
+    #=
+    Calculates water lost, given:
+
+    cur_h2o: current water inventory. Can be in whatever unit you like, m GEL common
+    DHnow: present day atmospheric D/H in water
+    DH0: ancient Mars atmospheric D/H in water
+    f: fractionation factor 
+    =#
     return cur_h2o * ((DHnow/DH0)^(1/(1-f)) - 1)
 end
 
@@ -26,6 +34,8 @@ function required_escape_rate(W_lost)
     Calculates the required escape rate of H atoms, assuming a constant escape
     rate and a linear change with time. NOTE: this assumes all water lost 
     (W_lost) is in the form H2O.
+
+    1.419e17 is 4.5 billion years in seconds.
     =#
     H_lost = GEL_to_molecule(W_lost, "H")
     flux = H_lost / 1.419e17 # units #/cm^2s 
@@ -33,7 +43,8 @@ end
 
 function plot_water_loss(f_therm, f_both, f_therm_range=nothing, f_both_range=nothing)
     #=
-    Plot water loss as a result of fractionation factor results and also a line
+    Plot water loss vs. current water inventory estimate.
+    Accounts for fractionation factor results and also plots a line
     according to the D/H ratio used. 
 
     f_therm: mean fractionation factor for only thermal escape
@@ -58,7 +69,6 @@ function plot_water_loss(f_therm, f_both, f_therm_range=nothing, f_both_range=no
     plot_bg(ax)
     xlabel("Current exchangeable water (m GEL)")
     ylabel("Total water loss (m GEL)")
-    # title("Water lost since 4.5 Ga")
 
     # plot 
     blues = get_grad_colors(2, "Blues", strt=0.5)
@@ -117,6 +127,10 @@ function plot_water_loss_vs_temp()
     Plot water loss as a result of fractionation factor results and also a line
     according to the D/H ratio used. 
 
+    In this plot, the x-axis is exobase temperature. It was created to convince
+    a reviewer that for a specific current water inventory estimate, 
+    that increased temps => increased f => increased water loss.
+
     f_therm: mean fractionation factor for only thermal escape
     f_both: mean fractionation factor for both thermal + nonthermal
     f_therm_range: min and max fractionation factor for thermal escape
@@ -148,7 +162,6 @@ function plot_water_loss_vs_temp()
     println(f_by_temp)
 
     loss_t = [h2olost(cur_h2o, 5.5, 1.275, f) for f in f_by_temp]
-    # loss_b = h2olost(cur_h2o, 5.5, 1.275, f_both)
 
     ax.plot(150:25:350, loss_t, zorder=2, color=blues[1, :], marker="D")
     ax.text(150, 120, "Water loss via thermal escape\nfor a current inventory of 25 m GEL", color=medgray, va="top")
@@ -159,7 +172,7 @@ end
 function plot_simple_water_loss(cur_h2o=25)
     #=
     Plot just the Rayleigh distillation equation, no fractionation factor results.
-    For demonstration purposes.
+    For demonstration purposes. Bruce asked for this. Not in the paper.
 
     cur_h2o: assumed water inventory in m GEL.
     =#
@@ -202,6 +215,12 @@ f_mean_thermal = 0.001899480829925377
 f_therm_range = [3.26998e-5, 0.0171938]
 f_mean_both = 0.05964736746762264
 f_both_range = [0.0354146, 0.0971759]
+
+println("Echoing f inputs for clarity:")
+println("f_mean_thermal: $(f_mean_thermal)")
+println("f_therm_range: $(f_therm_range)")
+println("f_mean_both: $(f_mean_both)")
+println("f_both_range: $(f_both_range)")
 
 plot_water_loss(f_mean_thermal, f_mean_both, f_therm_range, f_both_range)
 

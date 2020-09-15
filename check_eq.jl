@@ -46,8 +46,8 @@ end
 
 # Calculate the flux ratio =====================================================
 Of = 1.2e8
-Hf = get_flux(:H, rf, Of, temparr, therm_only=true)
-HDf = Hf + get_flux(:D, rf, Of, temparr, therm_only=true)
+Hf = get_flux(:H, rf, temparr, therm_only=true)
+HDf = Hf + get_flux(:D, rf, temparr, therm_only=true)
 
 
 if round(HDf/Of) == 2

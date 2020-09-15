@@ -27,13 +27,7 @@ global rcParams = PyCall.PyDict(matplotlib."rcParams")
 
 function make_reproduction_plot()
     #=
-    fmin: f for the solar minimum reproduction of Krasnopolsky 2002.
-    fmean: f mean for the solar mean of same
-    fmax: you know the drill
-    therm: whether to reproduce his results using just thermal escape, or by 
-           also accounting for nonthermal escape (in a ham-fisted way, by just
-           multiplying his nonthermal escape velocities by the species 
-           concentration)
+    Plots our attempts at reproducing past studies against those studies.
     =#
     Oflux = 1.2e8 
     filemin = results_dir*"Replications/Kras2002-rep/temp_213_125_200/converged_temp_213_125_200.h5"
@@ -42,13 +36,13 @@ function make_reproduction_plot()
 
 
     # Calculate f values -------------------------------------------------------
-    f_k02min_therm = calculate_f(filemin, "thermal", [213.0, 125.0, 200.0], 1.2e8, reprod=true)
-    f_k02mean_therm = calculate_f(filemean, "thermal", [213.0, 125.0, 270.0], 1.2e8, reprod=true)
-    f_k02max_therm = calculate_f(filemax, "thermal", [213.0, 125.0, 350.0], 1.2e8, reprod=true)
+    f_k02min_therm = calculate_f(filemin, "thermal", [213.0, 125.0, 200.0], reprod=true)
+    f_k02mean_therm = calculate_f(filemean, "thermal", [213.0, 125.0, 270.0], reprod=true)
+    f_k02max_therm = calculate_f(filemax, "thermal", [213.0, 125.0, 350.0], reprod=true)
 
-    f_k02min_both = calculate_f(filemin, "both", [213.0, 125.0, 200.0], 1.2e8, reprod=true)
-    f_k02mean_both = calculate_f(filemean, "both", [213.0, 125.0, 270.0], 1.2e8, reprod=true)
-    f_k02max_both = calculate_f(filemax, "both", [213.0, 125.0, 350.0], 1.2e8, reprod=true)
+    f_k02min_both = calculate_f(filemin, "both", [213.0, 125.0, 200.0], reprod=true)
+    f_k02mean_both = calculate_f(filemean, "both", [213.0, 125.0, 270.0], reprod=true)
+    f_k02max_both = calculate_f(filemax, "both", [213.0, 125.0, 350.0], reprod=true)
 
     println(f_k02min_therm)
 
@@ -70,6 +64,9 @@ function make_reproduction_plot()
                ["past", "Replication", round(f_k02max_both, sigdigits=2)],
                ["past", L"Kras. 2002 $\odot$ max", 0.167]]
 
+    # these lines reshape the above arrays to the same shape, but a different type.
+    # I don't know. Julia is really annoying with array shapes and types.
+    # Basically these lines are witchcraft that I somehow figured out once.
     flist_repro_therm = permutedims(reshape(hcat(flist_repro_therm...), 
                                             (length(flist_repro_therm[1]), 
                                              length(flist_repro_therm))))

@@ -114,11 +114,18 @@ The order here doesn't matter except check_eq.jl should be run on each model out
 
 (2e) `reproductions_plot.jl`: Makes a plot of results for f when reproducing past studies. Includes past study values for comparison. Figure S3
 
+(2f) `plot_flux_contributions.jl`: Plots the contribution of H, D, H2, and HD to the escape flux of H and D as a function of tropopause and exobase temperatures.
+                                   Figure S5. Shows that estimates of non-thermal escape may be a bit off for low temperatures.
+
+(2g) `plot_rxn_rates.jl`: Plots chemical reaction rates for atomic H or D as a function of altitude, as well as flux quantities by altitude, for each experiment.
+                          These were created after receiving reviewer comments and are intended to demonstrate that higher temperatures leads to a 
+                          significant relative increase in flux of D vs for H.
+
 ---
 
 ## Notes for using this code
 
-Note that any instructions here are written for Ubuntu Linux. They probably also work on Macs, but I haven't used Macs in a long time. If you're using Windows, sorry, you're on your own... using Windows to code is a bold move!
+Note that any instructions here are written for Ubuntu Linux. They probably also work on Macs, but I haven't used Macs in a long time. If you're using Windows, sorry, you're on your own... 
 
 ### Setting up the main folder for the codebase
 
