@@ -91,7 +91,7 @@ This file contains key global constants and general simulation parameters, as we
 
 (1c) `plot_profiles.jl`
 
-This allows the user to plot the temperature and water vapor profiles that are used in the model.
+This allows the user to plot the temperature and water vapor profiles that are used in the model. Produces Figures 1-3.
 
 - Individual temperature profiles: can be specified, or can do the standard atmosphere temperature profile.
 - 6-panel temperature profiles: "Climate extrema" profiles; profiles with cold/warm temperature at the surface/tropopaues/exobase.
@@ -100,17 +100,17 @@ This allows the user to plot the temperature and water vapor profiles that are u
 
 (2) Analysis of model - required scripts
 
-These scripts are required to analyze the model. If you run all these scripts, you will get all the plots contained in the paper.
+These scripts are required to analyze the model. If you run all these scripts, you will get all the plots contained in the paper. And perhaps some extra information too!
 
 The order here doesn't matter except check_eq.jl should be run on each model output file and return an affirmative result before making any plots.
 
 (2a) `check_eq.jl`: Used to check that the atmospheric escape has reached stoichiometric balance, such that Φ_H + Φ_D = 2Φ_O
 
-(2b) `plot_all_results.jl`: Contains code to make all results Figures (Figures 4 through 7 and 9, 10, S4)
+(2b) `plot_all_results.jl`: Contains code to make all results Figures (Figures 4 through 7, 10, 11, S4)
 
-(2c) `plot_water_loss.jl`: Makes a plot of water loss as a function of various assumptions about current water inventory and the results for f shown in Figure 4.
+(2c) `plot_water_loss.jl`: Makes a plot of water loss as a function of various assumptions about current water inventory and the results for f. Figure 8 in paper.
 
-(2d) `plot_waterloss_results_vs_others.py`: Simple comparison plot, Figure 11 in paper 
+(2d) `plot_waterloss_results_vs_others.py`: Simple comparison plot, Figure 9 in paper 
 
 (2e) `reproductions_plot.jl`: Makes a plot of results for f when reproducing past studies. Includes past study values for comparison. Figure S3
 
@@ -139,9 +139,11 @@ Add the folder in which you will store the scripts to your julia startup file. A
 	:wq
 ```
 
-### Using the custom Julia module
+### Using the custom Julia modules
 
-In order for the various files to load `Analysis.jl`, you will need to add its folder to your machine's `$JULIA_LOAD_PATH` variable. The codebase is not set up to specify a definite path for this module. 
+In order for the various files to load `Analysis.jl` and `Photochemistry.jl`, you will need to add the root folder to your machine's `$JULIA_LOAD_PATH` variable. The codebase is not set up to specify a definite path for this module. 
+
+This section assumes that you have downloaded the contents of the repo to /home/username/dh_fractionation/.
 
 To see what's on your `JULIA_LOAD_PATH` variable:
 
@@ -151,11 +153,9 @@ echo $JULIA_LOAD_PATH
 
 To add the folder to the `JULIA_LOAD_PATH` variable, add the following line to either your ~/.bashrc or ~/.profile files:
 
-`export JULIA_LOAD_PATH=$JULIA_LOAD_PATH:/home/username/path/to/custom/modules`
+`export JULIA_LOAD_PATH=$JULIA_LOAD_PATH:/home/username/dh_fractionation/CustomJuliaModules`
 
-Note that the custom modules folder should be a subfolder of the main script folder. If the main script folder is /home/username/dh_fractionation/, then the module folder structure should look like this: /home/username/dh_fractionation/CustomJuliaModules
-
-Within CustomModules you should place the Analysis folder, which is provided here on Github.
+Within CustomModules you should have the Analysis folder and Photochemistry folders (they are already organized there in the repo)
 
 ---
 
