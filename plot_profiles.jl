@@ -85,7 +85,7 @@ function plot_T_6panel(base, profile_array)
     ax[1, 1].plot(lowTs, 0, marker="o", color=modcol)
     legend(bbox_to_anchor=(1.05, -0.07), fontsize=16)
     
-    savefig(base*"ALL STUDY PLOTS/temp_profiles.png", bbox_inches="tight")
+    savefig(base*"AllResultPlots/temp_profiles.png", bbox_inches="tight")
     savefig(base*"VarWaterTemp/temp_profiles.png", bbox_inches="tight")
 end
 
@@ -133,7 +133,7 @@ function plot_one_profile(Tp, titletext, base)
 
     # save it 
     savename = "temp_profile_"*join(split(titletext), "_")*".png"
-    savefig(base*"ALL STUDY PLOTS/"*savename, bbox_inches="tight")
+    savefig(base*"AllResultPlots/"*savename, bbox_inches="tight")
     savefig(base*"VarWaterTemp/"*savename, bbox_inches="tight")
 end
 
@@ -259,7 +259,7 @@ function plot_all_water_profs(Tp, hygropause_alt, base, resultsfolder; plot_HDO=
     end
     
     # save
-    savefig(base*"ALL STUDY PLOTS/water_profiles"*withHDO*".png", bbox_inches="tight")
+    savefig(base*"AllResultPlots/water_profiles"*withHDO*".png", bbox_inches="tight")
     savefig(base*resultsfolder*"water_profiles"*withHDO*".png", bbox_inches="tight")
 end
 
@@ -331,7 +331,7 @@ function plot_temp_3panel(base)
             ax[3].plot(Tprof, alt./1e5, color=cols[k-(numsurf+numtropo), :])
         end
     end
-    savefig(base*"ALL STUDY PLOTS/tradeoff_temp_profiles.png", bbox_inches="tight")
+    savefig(base*"AllResultPlots/tradeoff_temp_profiles.png", bbox_inches="tight")
     savefig(base*"TradeoffPlots/Main Results/tradeoff_temp_profiles.png", bbox_inches="tight")
 end
 

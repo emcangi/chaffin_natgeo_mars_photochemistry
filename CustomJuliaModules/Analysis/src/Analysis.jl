@@ -96,7 +96,7 @@ function get_flux(species, readfile, temps; oflux=1.2e8, repro=false, therm_only
     flux_t = 0
     flux_nt = 0
 
-    # set things up for accurate boundary conditions
+    # Boundary conditions are needed to get the flux, so we have to copy this little section over from converge_new_file.
     Temp(z::Float64) = Tpiecewise(z, temps[1], temps[2], temps[3])
     Temp_keepSVP(z::Float64) = Tpiecewise(z, meanTs, meanTt, meanTe)
     if exptype=="temp"
@@ -106,19 +106,22 @@ function get_flux(species, readfile, temps; oflux=1.2e8, repro=false, therm_only
         H2Osat = map(x->Psat(x), map(Temp, alt))
         HDOsat = map(x->Psat_HDO(x), map(Temp, alt))
     end
-    surface_watersat = Dict("H2O"=>H2Osat[1], "HDO"=>HDOsat[1])
-    H_effusion_velocity = effusion_velocity(Temp(zmax), 1.0, zmax)
-    H2_effusion_velocity = effusion_velocity(Temp(zmax), 2.0, zmax)
-    D_effusion_velocity = effusion_velocity(Temp(zmax), 2.0, zmax)
-    HD_effusion_velocity = effusion_velocity(Temp(zmax), 3.0, zmax)
-
-    # Used for passing a variable speciesbcs function
-    v_eff = Dict("H"=>H_effusion_velocity, "D"=>D_effusion_velocity, 
-                 "H2"=>H2_effusion_velocity, "HD"=>HD_effusion_velocity)
+    speciesbclist=Dict(
+                :CO2=>["n" 2.1e17; "f" 0.],
+                :Ar=>["n" 2.0e-2*2.1e17; "f" 0.],
+                :N2=>["n" 1.9e-2*2.1e17; "f" 0.],
+                :H2O=>["n" H2Osat[1]; "f" 0.],
+                :HDO=>["n" HDOsat[1]; "f" 0.],
+                :O=>["f" 0.; "f" 1.2e8],
+                :H2=>["f" 0.; "v" effusion_velocity(Temp(zmax), 2.0, zmax)],
+                :HD=>["f" 0.; "v" effusion_velocity(Temp(zmax), 3.0, zmax)],
+                :H=>["f" 0.; "v" effusion_velocity(Temp(zmax), 1.0, zmax)],
+                :D=>["f" 0.; "v" effusion_velocity(Temp(zmax), 2.0, zmax)],
+               );
 
     # Calculate the thermal escape
     for (s, m) in zip(bearer[species], num_D_or_H[species])
-        this_species_t_flux = m * n_current[s][end]*speciesbcs(s, surface_watersat, v_eff, oflux)[2,2]
+        this_species_t_flux = m * n_current[s][end]*speciesbcs(s, speciesbclist)[2,2]
         flux_t += this_species_t_flux
         contrib_t[s] += this_species_t_flux
     end

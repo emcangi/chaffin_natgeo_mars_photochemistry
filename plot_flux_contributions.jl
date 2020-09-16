@@ -43,9 +43,9 @@ function make_figure(temps, dict_t, dict_nt, exptype)
 	rcParams["font.sans-serif"] = ["Louis George Caf?"]
 	rcParams["font.monospace"] = ["FreeMono"]
 	rcParams["font.size"] = 16
-	rcParams["axes.labelsize"]= 18
-	rcParams["xtick.labelsize"] = 14
-	rcParams["ytick.labelsize"] = 14
+	rcParams["axes.labelsize"]= 20
+	rcParams["xtick.labelsize"] = 16
+	rcParams["ytick.labelsize"] = 16
 
 	totcol = "red"
 	atomiccol = "blue"
@@ -86,7 +86,7 @@ function make_figure(temps, dict_t, dict_nt, exptype)
 
 	# H fig ==========================================
 	fig, ax = subplots(2, 1, sharex=true, sharey=false, figsize=(7, 12))
-	subplots_adjust(hspace=0.1, wspace=1)
+	subplots_adjust(hspace=0.1, wspace=1.5)
 	s = "H"
 
 	# H species panel -----------------------
@@ -164,7 +164,7 @@ function make_figure(temps, dict_t, dict_nt, exptype)
     ax4.text(dfentry.ftnt[1][1], dfentry.ftnt[1][2], linelbltxt["ftnt"], color=medgray, ha="left", va="top")
 	
 	savefig(basepath*"$(exptype)_contributions.png")
-	savefig(results_dir*"/ALL STUDY PLOTS/"*"$(exptype)_contributions.png")
+	savefig(results_dir*"/AllResultPlots/"*"$(exptype)_temp_thermal_and_nonthermal_contributions.png")
 end
 
 # ===============================================================================
@@ -193,7 +193,7 @@ exo_t_nt = Dict("H"=>Dict("total"=>[], :H=>[], :H2=>[], :HD=>[]),
 # These sections open the file and collect the fluxes and contributions from each species for thermal and non-thermal escape.
 # The first section is for the tropopause temperatures.
 for t in Tt
-	f_t, f_nt, c_t, c_nt = get_flux(:H, basepath*"temp_216_$(t)_205/converged_temp_216_$(t)_205.h5", 1.2e8, [216., Float64(t), 205.], repro=false, therm_only=false)
+	f_t, f_nt, c_t, c_nt = get_flux(:H, basepath*"temp_216_$(t)_205/converged_temp_216_$(t)_205.h5", [216., Float64(t), 205.], repro=false, therm_only=false)
 	append!(tropo_t["H"]["total"], f_t)   # Total H thermal ecsape flux from H, H2, and HD species
 	append!(tropo_t["H"][:H], c_t[:H])    # Contribution of atomic H loss to thermal escape of H
 	append!(tropo_t["H"][:H2], c_t[:H2])  # Contribution of molecular H
@@ -204,7 +204,7 @@ for t in Tt
 	append!(tropo_t_nt["H"][:HD], c_nt[:HD])  # Contrib. of molec. H deuteride
 
 	# This is the same information but for loss of D via D and HD.
-	f_t, f_nt, c_t, c_nt = get_flux(:D, basepath*"temp_216_$(t)_205/converged_temp_216_$(t)_205.h5", 1.2e8, [216., Float64(t), 205.], repro=false, therm_only=false)
+	f_t, f_nt, c_t, c_nt = get_flux(:D, basepath*"temp_216_$(t)_205/converged_temp_216_$(t)_205.h5", [216., Float64(t), 205.], repro=false, therm_only=false)
 	append!(tropo_t["D"]["total"], f_t)
 	append!(tropo_t["D"][:D], c_t[:D])
 	append!(tropo_t["D"][:HD], c_t[:HD])
@@ -213,13 +213,13 @@ for t in Tt
 	append!(tropo_t_nt["D"][:HD], c_nt[:HD])
 
 	# fractionation factor. Here we retrieve f for thermal only and thermal+non-thermal as in the main results.
-	append!(tropo_t["f"], calculate_f(basepath*"temp_216_$(t)_205/converged_temp_216_$(t)_205.h5", "thermal", [216., Float64(t), 205.], 1.2e8))
-	append!(tropo_t_nt["f"], calculate_f(basepath*"temp_216_$(t)_205/converged_temp_216_$(t)_205.h5", "both", [216., Float64(t), 205.], 1.2e8))
+	append!(tropo_t["f"], calculate_f(basepath*"temp_216_$(t)_205/converged_temp_216_$(t)_205.h5", "thermal", [216., Float64(t), 205.]))
+	append!(tropo_t_nt["f"], calculate_f(basepath*"temp_216_$(t)_205/converged_temp_216_$(t)_205.h5", "both", [216., Float64(t), 205.]))
 end
 
 # same thing but for exobase temperatures.
 for t in Te
-	f_t, f_nt, c_t, c_nt = get_flux(:H, basepath*"temp_216_130_$(t)/converged_temp_216_130_$(t).h5", 1.2e8, [216., 130., Float64(t)], repro=false, therm_only=false)
+	f_t, f_nt, c_t, c_nt = get_flux(:H, basepath*"temp_216_130_$(t)/converged_temp_216_130_$(t).h5", [216., 130., Float64(t)], repro=false, therm_only=false)
 	append!(exo_t["H"]["total"], f_t)
 	append!(exo_t["H"][:H], c_t[:H])
 	append!(exo_t["H"][:H2], c_t[:H2])
@@ -229,7 +229,7 @@ for t in Te
 	append!(exo_t_nt["H"][:H2], c_nt[:H2])
 	append!(exo_t_nt["H"][:HD], c_nt[:HD])
 
-	f_t, f_nt, c_t, c_nt = get_flux(:D, basepath*"temp_216_130_$(t)/converged_temp_216_130_$(t).h5", 1.2e8, [216., 130., Float64(t)], repro=false, therm_only=false)
+	f_t, f_nt, c_t, c_nt = get_flux(:D, basepath*"temp_216_130_$(t)/converged_temp_216_130_$(t).h5", [216., 130., Float64(t)], repro=false, therm_only=false)
 	append!(exo_t["D"]["total"], f_t)
 	append!(exo_t["D"][:D], c_t[:D])
 	append!(exo_t["D"][:HD], c_t[:HD])
@@ -238,8 +238,8 @@ for t in Te
 	append!(exo_t_nt["D"][:HD], c_nt[:HD])
 
 	# fractiontion factor
-	append!(exo_t["f"], calculate_f(basepath*"temp_216_130_$(t)/converged_temp_216_130_$(t).h5", "thermal", [216., 130., Float64(t)], 1.2e8))
-	append!(exo_t_nt["f"], calculate_f(basepath*"temp_216_130_$(t)/converged_temp_216_130_$(t).h5", "both", [216., 130., Float64(t)], 1.2e8))
+	append!(exo_t["f"], calculate_f(basepath*"temp_216_130_$(t)/converged_temp_216_130_$(t).h5", "thermal", [216., 130., Float64(t)]))
+	append!(exo_t_nt["f"], calculate_f(basepath*"temp_216_130_$(t)/converged_temp_216_130_$(t).h5", "both", [216., 130., Float64(t)]))
 end
 
 

@@ -235,30 +235,31 @@ function getflux(n_current, species, t, exptype)
         thetemps = [t, meanTt, meanTe]
     end
 
-    # we also need these effusion velocities to get the transport coefficients and boundary conditions
-    H_effusion_velocity = effusion_velocity(Tpiecewise(zmax, thetemps[1], thetemps[2], thetemps[3]), 1.0, zmax)
-    H2_effusion_velocity = effusion_velocity(Tpiecewise(zmax, thetemps[1], thetemps[2], thetemps[3]), 2.0, zmax)
-    D_effusion_velocity = effusion_velocity(Tpiecewise(zmax, thetemps[1], thetemps[2], thetemps[3]), 2.0, zmax)
-    HD_effusion_velocity = effusion_velocity(Tpiecewise(zmax, thetemps[1], thetemps[2], thetemps[3]), 3.0, zmax)
-
-    # Used for passing a variable speciesbcs function
-    v_eff = Dict("H"=>H_effusion_velocity, "D"=>D_effusion_velocity, 
-                 "H2"=>H2_effusion_velocity, "HD"=>HD_effusion_velocity)
-
-
     # each element in thesecoefs has the format [downward, upward]
     thesecoefs = [fluxcoefs(a, dz, species, n_current, thetemps, exptype) for a in alt[2:end-1]]
 
-    # set up this random variable surface_watersat that I need to have in there
-    Temp(z::Float64) = Tpiecewise(z, thetemps[1], thetemps[2], thetemps[3])
+
+    # Boundary conditions are needed to get the flux, so we have to copy this little section over from converge_new_file.
     Temp_keepSVP(z::Float64) = Tpiecewise(z, meanTs, meanTt, meanTe)
     H2Osat = map(x->Psat(x), map(Temp_keepSVP, alt)) # for holding SVP fixed
     HDOsat = map(x->Psat_HDO(x), map(Temp_keepSVP, alt))  # for holding SVP fixed
-    sws = Dict("H2O"=>H2Osat[1], "HDO"=>HDOsat[1])
+    speciesbclist=Dict(
+                :CO2=>["n" 2.1e17; "f" 0.],
+                :Ar=>["n" 2.0e-2*2.1e17; "f" 0.],
+                :N2=>["n" 1.9e-2*2.1e17; "f" 0.],
+                :H2O=>["n" H2Osat[1]; "f" 0.],
+                :HDO=>["n" HDOsat[1]; "f" 0.],
+                :O=>["f" 0.; "f" 1.2e8],
+                :H2=>["f" 0.; "v" effusion_velocity(Tpiecewise(zmax, thetemps[1], thetemps[2], thetemps[3]), 2.0, zmax)],
+                :HD=>["f" 0.; "v" effusion_velocity(Tpiecewise(zmax, thetemps[1], thetemps[2], thetemps[3]), 3.0, zmax)],
+                :H=>["f" 0.; "v" effusion_velocity(Tpiecewise(zmax, thetemps[1], thetemps[2], thetemps[3]), 1.0, zmax)],
+                :D=>["f" 0.; "v" effusion_velocity(Tpiecewise(zmax, thetemps[1], thetemps[2], thetemps[3]), 2.0, zmax)],
+               );
+
     
     # thesebcs has the format [lower bc; upper bc], where each row contains a 
     # character showing the type of boundary condition, and a number giving its value
-    thesebcs = boundaryconditions(species, dz, n_current, sws, v_eff, 1.2e8, thetemps, exptype)
+    thesebcs = boundaryconditions(species, dz, n_current, thetemps, exptype, speciesbclist)
 
     thesefluxes = fill(convert(Float64, NaN),length(intaltgrid))
 
@@ -334,12 +335,12 @@ function scaleH(z, species::Symbol, thetemps)
     return boltzmannK*T/(mm*mH*marsM*bigG)*(((z+radiusM)*1e-2)^2)*1e2
 end
 
-function boundaryconditions(species, dz, n_current, surf_watersat, v_eff, Of, thetemps, exptype)
+function boundaryconditions(species, dz, n_current, thetemps, exptype, speciesbclist)
     #= 
     Special overload for this file
     =#
 
-    bcs = speciesbcs(species, surf_watersat, v_eff, Of)
+    bcs = speciesbcs(species, speciesbclist)
     if issubset([species],notransportspecies)
         bcs = ["f" 0.; "f" 0.]
     end
@@ -575,8 +576,17 @@ function plot_chem_and_transport_rates(sp, T_param_array, exptype; plot_indiv_rx
         
         # ---------------------------------------------------------------------------------
         # Plot reaction rates and transport rates by altitude
+        rcParams = PyCall.PyDict(matplotlib."rcParams")
+        rcParams["font.sans-serif"] = ["Louis George Caf?"]
+        rcParams["font.monospace"] = ["FreeMono"]
+        rcParams["font.size"] = 12
+        rcParams["axes.labelsize"]= 16
+        rcParams["xtick.labelsize"] = 16
+        rcParams["ytick.labelsize"] = 16
 
         fig, ax = subplots(figsize=(8,6))
+        
+
         subplots_adjust(wspace=0, bottom=0.25)
         plot_bg(ax)
 
@@ -646,17 +656,24 @@ function plot_chem_and_transport_rates(sp, T_param_array, exptype; plot_indiv_rx
         netfluxup = linez.Line2D([0], [0], color="red", marker="^", linewidth=0)
         netfluxdown = linez.Line2D([0], [0], color="blue", marker="v", linewidth=0)
         handles = [black_line, gray_line, netfluxup, netfluxdown]
-        labels = [ "Total chem production", "Total chem consumption", "Net flux up", "Net flux down"]
-        ax.legend(handles, labels)
+        labels = [ "Total chem. prod.", "Total chem. loss", "Net flux up", "Net flux down"]
+
+        if sp==:H && t < 110
+            ax2.legend(handles, labels, loc=(0.2, 0.7))
+        end
+        if sp==:D && t < 110
+            ax.legend(handles, labels)
+        end
+
         
         # labels and such 
-        ax.set_title("Chemistry and transport of $(string(sp)), T_$(exptype)=$(t)")
+        ax.set_title("Chemistry and transport of $(string(sp)), T_$(exptype)=$(t) K", fontsize=20)
         ax.set_xlim(xlims[1], xlims[2])
         ax.set_ylabel("Altitude (km)")
         ax.set_xlabel("Chemical reaction rate ("*L"cm^{-3}s^{-1})")
         ax2.set_xlabel("Flux ("*L"cm^{-2}s^{-1})")
         ax2.set_xlim(xlims[3], xlims[4])
-        savefig(results_dir*"ALL STUDY PLOTS/$(exptype)_chem_transport/$(sp)_reactions_$(Int64(t))K.png", bbox_inches="tight")
+        savefig(results_dir*"AllResultPlots/$(exptype)_chem_transport/$(sp)_reactions_$(Int64(t))K.png", bbox_inches="tight")
         close(fig)
     end
 end
@@ -668,11 +685,14 @@ Ts = [150., 160., 170., 180., 190., 200., 210., 220., 230., 240., 250., 260., 27
 Tt = [100., 110., 120., 130., 140., 150., 160.]
 Te = [150., 175., 200., 225., 250., 275., 300., 325., 350.]
 
-# plot_chem_and_transport_rates(:H, Tt, "tropo", plot_indiv_rxns=false, thresh=1e1, xlims=[1e-10, 1e6, 1e4, 1e9])
-# plot_chem_and_transport_rates(:D, Tt, "tropo", plot_indiv_rxns=false, thresh=1e-3, xlims=[1e-8, 1e2, 1e0, 1e5])
+println("Working on tropopause temperature plots")
+plot_chem_and_transport_rates(:H, Tt, "tropo", plot_indiv_rxns=false, thresh=1e1, xlims=[1e-10, 1e6, 1e4, 1e9])
+plot_chem_and_transport_rates(:D, Tt, "tropo", plot_indiv_rxns=false, thresh=1e-3, xlims=[1e-8, 1e2, 1e0, 1e5])
 
-# plot_chem_and_transport_rates(:H, Te, "exo", plot_indiv_rxns=false, thresh=1e1, xlims=[1e-10, 1e6, 1e4, 1e9])
-# plot_chem_and_transport_rates(:D, Te, "exo", plot_indiv_rxns=false, thresh=1e-3,  xlims=[1e-8, 1e2, 1e0, 1e6])
+println("Working on exobase temperature plots")
+plot_chem_and_transport_rates(:H, Te, "exo", plot_indiv_rxns=false, thresh=1e1, xlims=[1e-10, 1e6, 1e4, 1e9])
+plot_chem_and_transport_rates(:D, Te, "exo", plot_indiv_rxns=false, thresh=1e-3,  xlims=[1e-8, 1e2, 1e0, 1e6])
 
+println("Working on surface temperature plots")
 plot_chem_and_transport_rates(:H, Ts, "surf", plot_indiv_rxns=false, xlims=[1e-10, 1e6, 1e4, 1e9])
 plot_chem_and_transport_rates(:D, Ts, "surf", plot_indiv_rxns=false, xlims=[1e-8, 1e2, 1e0, 1e6])

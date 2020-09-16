@@ -99,7 +99,7 @@ function plot_water_loss(f_therm, f_both, f_therm_range=nothing, f_both_range=no
 
     ax.legend()
 
-    savefig(results_dir*"ALL STUDY PLOTS/h2oloss.png", bbox_inches="tight")
+    savefig(results_dir*"AllResultPlots/h2oloss.png", bbox_inches="tight")
     savefig(results_dir*"MainCases/h2oloss.png", bbox_inches="tight")
 
     println("Thermal escape water loss (based on f for mean temperature profile):")
@@ -165,7 +165,7 @@ function plot_water_loss_vs_temp()
 
     ax.plot(150:25:350, loss_t, zorder=2, color=blues[1, :], marker="D")
     ax.text(150, 120, "Water loss via thermal escape\nfor a current inventory of 25 m GEL", color=medgray, va="top")
-    savefig(results_dir*"ALL STUDY PLOTS/h2oloss-bytemp.png", bbox_inches="tight")
+    savefig(results_dir*"AllResultPlots/h2oloss-bytemp.png", bbox_inches="tight")
     savefig(results_dir*"MainCases/h2oloss-bytemp.png", bbox_inches="tight")
 end
 
@@ -206,7 +206,7 @@ function plot_simple_water_loss(cur_h2o=25)
     text(0.000005, 50, "Water loss constant \n"+L" with $f$ when $f\ll0.05$")
     text(0.0006, 200, "Water loss depends \nstrongly on " + L"$f$ for $f\gtrapprox 0.05$")
     ylim(0, 240)
-    savefig(results_dir*"ALL STUDY PLOTS/h2oloss_simple.png", bbox_inches="tight")
+    savefig(results_dir*"AllResultPlots/h2oloss_simple.png", bbox_inches="tight")
 end
 
 println("ALERT: f values are hard-coded in this file. Make sure they're correct."*

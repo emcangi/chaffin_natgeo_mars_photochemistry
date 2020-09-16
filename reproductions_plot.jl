@@ -133,7 +133,7 @@ function make_reproduction_plot()
                 ha="right")
     end
 
-    savefig(results_dir*"ALL STUDY PLOTS/f-reproductions-plot.png", bbox_inches="tight")
+    savefig(results_dir*"AllResultPlots/f-reproductions-plot.png", bbox_inches="tight")
 end
 
 # ==============================================================================

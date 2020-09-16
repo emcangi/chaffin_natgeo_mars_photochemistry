@@ -56,5 +56,5 @@ plt.yticks(dummyind, labels=studies)
 plt.title("Study comparison of lost water")
 plt.xlabel("Water lost (m GEL)")
 
-plt.savefig(results_dir+"ALL STUDY PLOTS/water_loss_comparison.png", bbox_inches="tight")
+plt.savefig(results_dir+"AllResultPlots/water_loss_comparison.png", bbox_inches="tight")
 plt.savefig(results_dir+"VarWaterTemp/water_loss_comparison.png", bbox_inches="tight")
