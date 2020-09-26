@@ -163,8 +163,8 @@ function make_figure(temps, dict_t, dict_nt, exptype)
     ax4.text(dfentry.ft[1][1], dfentry.ft[1][2], linelbltxt["ft"], color=medgray, ha="left", va="top")
     ax4.text(dfentry.ftnt[1][1], dfentry.ftnt[1][2], linelbltxt["ftnt"], color=medgray, ha="left", va="top")
 	
-	savefig(basepath*"$(exptype)_contributions.png")
-	savefig(results_dir*"/AllResultPlots/"*"$(exptype)_temp_thermal_and_nonthermal_contributions.png")
+	savefig(basepath*"$(exptype)_contributions.png", dpi=300)
+	savefig(results_dir*"/AllResultPlots/"*"$(exptype)_temp_thermal_and_nonthermal_contributions.png", dpi=300)
 end
 
 # ===============================================================================

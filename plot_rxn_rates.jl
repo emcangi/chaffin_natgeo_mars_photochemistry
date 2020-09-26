@@ -28,8 +28,9 @@ include("PARAMETERS.jl")
 
 # NOTE: You cannot use reactionnet as defined in PARAMETERS.jl. It has to be
 # this one here because we must change all the operators to be array operators.
-# Net last checked: Sept 2020
+# These redefinitions are basically overrides...
 # Also, the threebody functions must be as used here for the same reason.
+# Net last checked: Sept 2020
 
 threebody(k0, kinf) = :($k0 .* M ./ (1 .+ $k0 .* M ./ $kinf).*0.6 .^ ((1 .+ (log10.($k0 .* M ./ $kinf)) .^2).^-1.0))
 threebodyca(k0, kinf) = :($k0 ./ (1 .+ $k0 ./ ($kinf ./ M)).*0.6 .^ ((1 .+ (log10.($k0 ./ ($kinf .* M))) .^2).^-1.0))
@@ -240,6 +241,7 @@ function getflux(n_current, species, t, exptype)
 
 
     # Boundary conditions are needed to get the flux, so we have to copy this little section over from converge_new_file.
+    # We can't make it globally available because it depends on the temperature profile for the effusion velocities.
     Temp_keepSVP(z::Float64) = Tpiecewise(z, meanTs, meanTt, meanTe)
     H2Osat = map(x->Psat(x), map(Temp_keepSVP, alt)) # for holding SVP fixed
     HDOsat = map(x->Psat_HDO(x), map(Temp_keepSVP, alt))  # for holding SVP fixed
@@ -665,6 +667,14 @@ function plot_chem_and_transport_rates(sp, T_param_array, exptype; plot_indiv_rx
             ax.legend(handles, labels)
         end
 
+        if sp==:H && t == 150
+            ax2.legend(handles, labels, loc=(0.2, 0.7))
+        end
+        if sp==:D && t == 150
+            ax.legend(handles, labels)
+        end
+
+
         
         # labels and such 
         ax.set_title("Chemistry and transport of $(string(sp)), T_$(exptype)=$(t) K", fontsize=20)
@@ -673,7 +683,7 @@ function plot_chem_and_transport_rates(sp, T_param_array, exptype; plot_indiv_rx
         ax.set_xlabel("Chemical reaction rate ("*L"cm^{-3}s^{-1})")
         ax2.set_xlabel("Flux ("*L"cm^{-2}s^{-1})")
         ax2.set_xlim(xlims[3], xlims[4])
-        savefig(results_dir*"AllResultPlots/$(exptype)_chem_transport/$(sp)_reactions_$(Int64(t))K.png", bbox_inches="tight")
+        savefig(results_dir*"AllResultPlots/$(exptype)_chem_transport/$(sp)_reactions_$(Int64(t))K.png", bbox_inches="tight", dpi=300)
         close(fig)
     end
 end

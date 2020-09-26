@@ -99,8 +99,8 @@ function plot_water_loss(f_therm, f_both, f_therm_range=nothing, f_both_range=no
 
     ax.legend()
 
-    savefig(results_dir*"AllResultPlots/h2oloss.png", bbox_inches="tight")
-    savefig(results_dir*"MainCases/h2oloss.png", bbox_inches="tight")
+    savefig(results_dir*"AllResultPlots/h2oloss.png", bbox_inches="tight", dpi=300)
+    savefig(results_dir*"MainCases/h2oloss.png", bbox_inches="tight", dpi=300)
 
     println("Thermal escape water loss (based on f for mean temperature profile):")
     println(Array(loss_t))
@@ -165,8 +165,8 @@ function plot_water_loss_vs_temp()
 
     ax.plot(150:25:350, loss_t, zorder=2, color=blues[1, :], marker="D")
     ax.text(150, 120, "Water loss via thermal escape\nfor a current inventory of 25 m GEL", color=medgray, va="top")
-    savefig(results_dir*"AllResultPlots/h2oloss-bytemp.png", bbox_inches="tight")
-    savefig(results_dir*"MainCases/h2oloss-bytemp.png", bbox_inches="tight")
+    savefig(results_dir*"AllResultPlots/h2oloss-bytemp.png", bbox_inches="tight", dpi=300)
+    savefig(results_dir*"MainCases/h2oloss-bytemp.png", bbox_inches="tight", dpi=300)
 end
 
 function plot_simple_water_loss(cur_h2o=25)

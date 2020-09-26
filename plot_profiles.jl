@@ -85,8 +85,8 @@ function plot_T_6panel(base, profile_array)
     ax[1, 1].plot(lowTs, 0, marker="o", color=modcol)
     legend(bbox_to_anchor=(1.05, -0.07), fontsize=16)
     
-    savefig(base*"AllResultPlots/temp_profiles.png", bbox_inches="tight")
-    savefig(base*"VarWaterTemp/temp_profiles.png", bbox_inches="tight")
+    savefig(base*"AllResultPlots/temp_profiles.png", bbox_inches="tight", dpi=300)
+    savefig(base*"MainCases/temp_profiles.png", bbox_inches="tight", dpi=300)
 end
 
 function plot_one_profile(Tp, titletext, base)
@@ -133,8 +133,8 @@ function plot_one_profile(Tp, titletext, base)
 
     # save it 
     savename = "temp_profile_"*join(split(titletext), "_")*".png"
-    savefig(base*"AllResultPlots/"*savename, bbox_inches="tight")
-    savefig(base*"VarWaterTemp/"*savename, bbox_inches="tight")
+    savefig(base*"AllResultPlots/"*savename, bbox_inches="tight", dpi=300)
+    savefig(base*"MainCases/"*savename, bbox_inches="tight", dpi=300)
 end
 
 function plot_all_water_profs(Tp, hygropause_alt, base, resultsfolder; plot_HDO=true)
@@ -259,8 +259,8 @@ function plot_all_water_profs(Tp, hygropause_alt, base, resultsfolder; plot_HDO=
     end
     
     # save
-    savefig(base*"AllResultPlots/water_profiles"*withHDO*".png", bbox_inches="tight")
-    savefig(base*resultsfolder*"water_profiles"*withHDO*".png", bbox_inches="tight")
+    savefig(base*"AllResultPlots/water_profiles"*withHDO*".png", bbox_inches="tight", dpi=300)
+    savefig(base*resultsfolder*"water_profiles"*withHDO*".png", bbox_inches="tight", dpi=300)
 end
 
 function plot_temp_3panel(base)
@@ -279,9 +279,9 @@ function plot_temp_3panel(base)
     rcParams["xtick.labelsize"] = 18
     rcParams["ytick.labelsize"] = 18
 
-    Ts = collect(150:10:270)
+    Ts = collect(lowTs:10.:hiTs)
     Tt = collect(lowTt:10:hiTt)
-    Te = collect(150:25:350)
+    Te = collect(lowTe:25:hiTe)
     
     numsurf = length(Ts)
     numtropo = length(Tt)
@@ -315,24 +315,24 @@ function plot_temp_3panel(base)
     for k in range(1, length=totallen)
         cols = get_colors(numsurf, "plasma")
         if k <= numsurf  # surface
-            Tprof = map(h->Tpiecewise(h, Ts[k], meanTt, meanTe, "surf"), alt)
+            Tprof = map(h->Tpiecewise(h, Ts[k], meanTt, meanTe), alt)
             ax[1].plot(Tprof, alt./1e5, color=cols[k, :])
         end
         
         cols = get_colors(numtropo, "plasma")
         if numsurf+1 <= k <= numsurf+numtropo  # mesosphere
-            Tprof = map(h->Tpiecewise(h, meanTs, Tt[k-numsurf], meanTe, "tropo"), alt)
+            Tprof = map(h->Tpiecewise(h, meanTs, Tt[k-numsurf], meanTe), alt)
             ax[2].plot(Tprof, alt./1e5, color=cols[k-numsurf, :])
         end
         
         cols = get_colors(numexo, "plasma")
         if numsurf+numtropo+1 <= k  # exobase
-            Tprof = map(h->Tpiecewise(h, meanTs, meanTt, Te[k-(numsurf+numtropo)], "exo"), alt)
+            Tprof = map(h->Tpiecewise(h, meanTs, meanTt, Te[k-(numsurf+numtropo)]), alt)
             ax[3].plot(Tprof, alt./1e5, color=cols[k-(numsurf+numtropo), :])
         end
     end
-    savefig(base*"AllResultPlots/tradeoff_temp_profiles.png", bbox_inches="tight")
-    savefig(base*"TradeoffPlots/Main Results/tradeoff_temp_profiles.png", bbox_inches="tight")
+    savefig(base*"AllResultPlots/tradeoff_temp_profiles.png", bbox_inches="tight", dpi=300)
+    savefig(base*"DetailedCases/tradeoff_temp_profiles.png", bbox_inches="tight", dpi=300)
 end
 
 

@@ -104,9 +104,9 @@ function plot_results_caltech_together(base)
         filetouse = base*F*"/converged_"*F*".h5"
 
         # calculate f
-        f_surf[i, 2] = calculate_f(filetouse, "thermal", [Ts, meanTt, meanTe], Oflux)
-        f_surf[i, 3] = calculate_f(filetouse, "both", [Ts, meanTt, meanTe], Oflux)
-        f_surf[i, 4] = calculate_f(filetouse, "nonthermal", [Ts, meanTt, meanTe], Oflux)
+        f_surf[i, 2] = calculate_f(filetouse, "thermal", [Ts, meanTt, meanTe])
+        f_surf[i, 3] = calculate_f(filetouse, "both", [Ts, meanTt, meanTe])
+        f_surf[i, 4] = calculate_f(filetouse, "nonthermal", [Ts, meanTt, meanTe])
         i += 1
     end
 
@@ -120,9 +120,9 @@ function plot_results_caltech_together(base)
         filetouse = base*F*"/converged_"*F*".h5"
 
         # calculate f
-        f_tropo[i, 2] = calculate_f(filetouse, "thermal", [meanTs, Tt, meanTe], Oflux)
-        f_tropo[i, 3] = calculate_f(filetouse, "both", [meanTs, Tt, meanTe], Oflux)
-        f_tropo[i, 4] = calculate_f(filetouse, "nonthermal", [meanTs, Tt, meanTe], Oflux)
+        f_tropo[i, 2] = calculate_f(filetouse, "thermal", [meanTs, Tt, meanTe])
+        f_tropo[i, 3] = calculate_f(filetouse, "both", [meanTs, Tt, meanTe])
+        f_tropo[i, 4] = calculate_f(filetouse, "nonthermal", [meanTs, Tt, meanTe])
         i += 1
     end
 
@@ -136,15 +136,15 @@ function plot_results_caltech_together(base)
         filetouse = base*F*"/converged_"*F*".h5"
 
         # calculate f
-        f_exo[i, 2] = calculate_f(filetouse, "thermal", [meanTs, meanTt, Te], Oflux)
-        f_exo[i, 3] = calculate_f(filetouse, "both", [meanTs, meanTt, Te], Oflux)
-        f_exo[i, 4] = calculate_f(filetouse, "nonthermal", [meanTs, meanTt, Te], Oflux)
+        f_exo[i, 2] = calculate_f(filetouse, "thermal", [meanTs, meanTt, Te])
+        f_exo[i, 3] = calculate_f(filetouse, "both", [meanTs, meanTt, Te])
+        f_exo[i, 4] = calculate_f(filetouse, "nonthermal", [meanTs, meanTt, Te])
         i += 1
     end
 
     # get high and low f in water
     f_water = Array{Float64}(undef, 5, 4) #array to store f
-    waterfolders = search_subfolders(base, r"water_\d.+")#r"water_[0-9]+\.[0-9]+e-[0-9]")
+    waterfolders = search_subfolders(base, r"water_\d.+")
     i = 1
     for w in waterfolders
 
@@ -156,9 +156,9 @@ function plot_results_caltech_together(base)
 
         # calculate f
         f_water[i, 1] = parse(Float64, watermr)
-        f_water[i, 2] = calculate_f(filetouse, "thermal", [meanTs, meanTt, meanTe], Oflux)
-        f_water[i, 3] = calculate_f(filetouse, "both", [meanTs, meanTt, meanTe], Oflux)
-        f_water[i, 4] = calculate_f(filetouse, "nonthermal", [meanTs, meanTt, meanTe], Oflux)
+        f_water[i, 2] = calculate_f(filetouse, "thermal", [meanTs, meanTt, meanTe])
+        f_water[i, 3] = calculate_f(filetouse, "both", [meanTs, meanTt, meanTe])
+        f_water[i, 4] = calculate_f(filetouse, "nonthermal", [meanTs, meanTt, meanTe])
         i += 1
     end
 
@@ -171,9 +171,9 @@ function plot_results_caltech_together(base)
     mn = base * "temp_$(meanTsint)_$(meanTtint)_$(meanTeint)/converged_temp_$(meanTsint)_$(meanTtint)_$(meanTeint).h5"
 
     # the f calculations for thermal 
-    f_mean_thermal = calculate_f(mn, "thermal", [meanTs, meanTt, meanTe], Oflux)
-    f_mean_both = calculate_f(mn, "both", [meanTs, meanTt, meanTe], Oflux)
-    f_mean_nonthermal = calculate_f(mn, "nonthermal", [meanTs, meanTt, meanTe], Oflux)
+    f_mean_thermal = calculate_f(mn, "thermal", [meanTs, meanTt, meanTe])
+    f_mean_both = calculate_f(mn, "both", [meanTs, meanTt, meanTe])
+    f_mean_nonthermal = calculate_f(mn, "nonthermal", [meanTs, meanTt, meanTe])
 
     f_thermal = DataFrame(Exp=["Surface", "Tropopause", "Exobase", "Water", ""],
                           Min=[minimum(f_surf[:, 2]), minimum(f_tropo[:, 2]), 
@@ -348,8 +348,8 @@ function plot_results_caltech_together(base)
     ax.tick_params(which="both", labelsize=18)
     ax.set_xlim([1e-5, 1])
     # save to the two useful folders
-    savefig(base*"f_results.png", bbox_inches="tight")
-    savefig(results_dir*"AllResultPlots/f_results.png", bbox_inches="tight")
+    savefig(base*"f_results.png", bbox_inches="tight", dpi=300)
+    savefig(results_dir*"AllResultPlots/f_results.png", bbox_inches="tight", dpi=300)
 end
 
 # Functions for analyzing the detailed cases -----------------------------------
@@ -390,8 +390,8 @@ function make_std_atmo_dict(abs_or_mr)
 
     # Calculate the things we care about
     # H and D fluxes
-    Hf, contrib_H = get_flux(:H, tfile, 1.2e8, meantemps, therm_only=true)
-    Df, contrib_D = get_flux(:D, tfile, 1.2e8, meantemps, therm_only=true)
+    Hf, contrib_H = get_flux(:H, tfile, meantemps, therm_only=true)
+    Df, contrib_D = get_flux(:D, tfile, meantemps, therm_only=true)
     append!(atmo_metric_dict["Hflux"], Hf)
     append!(atmo_metric_dict["Dflux"], Df)
 
@@ -489,8 +489,8 @@ function analyze_water(abs_or_mr, allDbearers, make_plots=false, path=detailed_r
 
         # Calculate the things we care about
         # H and D fluxes
-        Hf, contrib_H = get_flux(:H, wfile, oflux, temps, therm_only=true)
-        Df, contrib_D = get_flux(:D, wfile, oflux, temps, therm_only=true)
+        Hf, contrib_H = get_flux(:H, wfile, temps, therm_only=true)
+        Df, contrib_D = get_flux(:D, wfile, temps, therm_only=true)
         append!(wdict["Hflux"], Hf)
         append!(wdict["Dflux"], Df)
 
@@ -605,8 +605,8 @@ function analyze_Oflux(abs_or_mr, allDbearers, make_plots=false, path=detailed_r
 
         # Calculate the things we care about
         # H and D fluxes
-        Hf, contrib_H = get_flux(:H, ofile, oflux, temps, therm_only=true)
-        Df, contrib_D = get_flux(:D, ofile, oflux, temps, therm_only=true)
+        Hf, contrib_H = get_flux(:H, ofile, temps, therm_only=true)
+        Df, contrib_D = get_flux(:D, ofile, temps, therm_only=true)
         append!(odict["Hflux"], Hf)
         append!(odict["Dflux"], Df)
 
@@ -743,8 +743,8 @@ function analyze_T(abs_or_mr, allDbearers, make_plots=false, path=detailed_resul
 
             # Calculate the things we care about
             # H and D fluxes
-            Hf, contrib_H = get_flux(:H, tfile, oflux, temps, therm_only=true)
-            Df, contrib_D = get_flux(:D, tfile, oflux, temps, therm_only=true)
+            Hf, contrib_H = get_flux(:H, tfile, temps, therm_only=true)
+            Df, contrib_D = get_flux(:D, tfile, temps, therm_only=true)
             append!(tdict["Hflux"], Hf)
             append!(tdict["Dflux"], Df)
 
@@ -1412,8 +1412,8 @@ function make_water_Hspecies_plot(output_dict, abs_or_mr)
 
     ax.set_xlabel(L"total atmospheric water (pr $\mu$m)")
     ax.set_ylabel(L"X/X(\overline{T}_{standard})")
-    savefig(detailed_results_dir*"compare_nominal_water_"*abs_or_mr*".png", bbox_inches="tight")
-    savefig(results_dir*"AllResultPlots/compare_nominal_water_"*abs_or_mr*".png", bbox_inches="tight")
+    savefig(detailed_results_dir*"compare_nominal_water_"*abs_or_mr*".png", bbox_inches="tight", dpi=300)
+    savefig(results_dir*"AllResultPlots/compare_nominal_water_"*abs_or_mr*".png", bbox_inches="tight", dpi=300)
 end
 
 function make_water_output_vs_data(output_MR, output_abs)
@@ -1458,8 +1458,8 @@ function make_water_output_vs_data(output_MR, output_abs)
     ax.text(1, 2.5, L"O$_3$", color=c1[4], ha="left", va="top")
     ax.set_xlabel(L"total atmospheric water (pr $\mu$m)")
     ax.set_ylabel(L"($X_{model}$-$X_{obs}$)/$\sigma$")
-    savefig(detailed_results_dir*"output_vs_data_water.png", bbox_inches="tight")
-    savefig(results_dir*"AllResultPlots/output_vs_data_water.png", bbox_inches="tight")
+    savefig(detailed_results_dir*"output_vs_data_water.png", bbox_inches="tight", dpi=300)
+    savefig(results_dir*"AllResultPlots/output_vs_data_water.png", bbox_inches="tight", dpi=300)
 end
 
 function make_water_f_plot(output_MR)
@@ -1507,8 +1507,8 @@ function make_water_f_plot(output_MR)
     ax_2.yaxis.set_minor_locator(matplotlib.ticker.MultipleLocator(0.01))
     ax_2.set_ylim(0.8, 1.1)
 
-    savefig(detailed_results_dir*"f_vs_water.png", bbox_inches="tight")
-    savefig(results_dir*"AllResultPlots/f_vs_water.png", bbox_inches="tight")
+    savefig(detailed_results_dir*"f_vs_water.png", bbox_inches="tight", dpi=300)
+    savefig(results_dir*"AllResultPlots/f_vs_water.png", bbox_inches="tight", dpi=300)
 end
 
 function make_water_loss_contribs_plot(output_abs)
@@ -1574,7 +1574,7 @@ function make_water_loss_contribs_plot(output_abs)
 
     ax[1].text(0.01, 1, "a", color="black", fontsize=26, weight="bold", va="top", zorder=20, transform=ax[1].transAxes)
     ax[2].text(0.01, 1, "b", color="black", fontsize=26, weight="bold", va="top", zorder=20, transform=ax[2].transAxes)
-    savefig(detailed_results_dir*"loss_contributions_water.png", bbox_inches="tight")
+    savefig(detailed_results_dir*"loss_contributions_water.png", bbox_inches="tight", dpi=300)
 end
 
 # Key results plots for detailed cases, temperatures:
@@ -1699,8 +1699,8 @@ function make_T_Hspecies_plot(output_dict, abs_or_mr)
     # ax.plot(xvals[ex], HDO2topdiff, marker="o", color="blue", zorder=10)
     # ax.plot(xvals[ex], DO2topdiff, marker="o", color="purple", zorder=10)
 
-    savefig(detailed_results_dir*"compare_nominal_temps_"*abs_or_mr*".png", bbox_inches="tight")
-    savefig(results_dir*"AllResultPlots/compare_nominal_temps_"*abs_or_mr*".png", bbox_inches="tight")
+    savefig(detailed_results_dir*"compare_nominal_temps_"*abs_or_mr*".png", bbox_inches="tight", dpi=300)
+    savefig(results_dir*"AllResultPlots/compare_nominal_temps_"*abs_or_mr*".png", bbox_inches="tight", dpi=300)
 end
 
 function make_T_output_vs_data(output_MR, output_abs)
@@ -1794,8 +1794,8 @@ function make_T_output_vs_data(output_MR, output_abs)
     ax[2].text(160, 4, "b", color="black", fontsize=26, weight="bold", va="top")
     ax[3].text(350, 4, "c", color="black", fontsize=26, weight="bold", va="top")
 
-    savefig(detailed_results_dir*"output_vs_data_temps.png", bbox_inches="tight")
-    savefig(results_dir*"AllResultPlots/output_vs_data_temps.png", bbox_inches="tight")
+    savefig(detailed_results_dir*"output_vs_data_temps.png", bbox_inches="tight", dpi=300)
+    savefig(results_dir*"AllResultPlots/output_vs_data_temps.png", bbox_inches="tight", dpi=300)
 end
 
 function make_T_f_plot(output_MR)
@@ -1870,8 +1870,8 @@ function make_T_f_plot(output_MR)
     ax[3].text(150, 1, "c", color="black", fontsize=26, weight="bold", va="top")
 
 
-    savefig(detailed_results_dir*"f_vs_temps.png", bbox_inches="tight")
-    savefig(results_dir*"/AllResultPlots/"*"f_vs_temps.png", bbox_inches="tight")
+    savefig(detailed_results_dir*"f_vs_temps.png", bbox_inches="tight", dpi=300)
+    savefig(results_dir*"/AllResultPlots/"*"f_vs_temps.png", bbox_inches="tight", dpi=300)
 end
 
 function make_T_loss_contribs_plot(output_abs)
@@ -1955,7 +1955,7 @@ function make_T_loss_contribs_plot(output_abs)
     ax[2, 1].text(150, 1, "d", color="black", fontsize=26, weight="bold", va="top", zorder=15)
     ax[2, 2].text(100, 1, "e", color="black", fontsize=26, weight="bold", va="top", zorder=15)
     ax[2, 3].text(150, 1, "f", color="black", fontsize=26, weight="bold", va="top", zorder=15)
-    savefig(detailed_results_dir*"loss_contributions_all.png", bbox_inches="tight")
+    savefig(detailed_results_dir*"loss_contributions_all.png", bbox_inches="tight", dpi=300)
 
     # FIGURE: Just exobase =======================================================================
     fig, ax = subplots(1, 2, sharex=true, sharey=true, figsize=(14, 5))
@@ -2007,7 +2007,8 @@ function make_T_loss_contribs_plot(output_abs)
 
     ax[1].text(0.01, 1, "a", color="black", fontsize=26, weight="bold", va="top", zorder=20, transform=ax[1].transAxes)
     ax[2].text(0.01, 1, "b", color="black", fontsize=26, weight="bold", va="top", zorder=20, transform=ax[2].transAxes)
-    savefig(detailed_results_dir*"loss_contributions_by_species_exobase.png", bbox_inches="tight")
+    savefig(detailed_results_dir*"loss_contributions_by_species_exobase.png", bbox_inches="tight", dpi=300)
+    savefig(detailed_results_dir*"loss_contributions_by_species_exobase.png", bbox_inches="tight", dpi=300)
 end
 
 # MAIN ==========================================================================
@@ -2038,16 +2039,16 @@ write_new_files = false  # set to true if running for first time after new simul
 #    Only the exobase case of this plot is used in the paper in Supplementary Info.
 
 # WATER
-# println("Analyzing water model output, building dicts, making small plots")
-# water_data_mr = analyze_water("mr", other_deuterated, makeplots)
-# water_data_abs = analyze_water("abs", other_deuterated, makeplots)
-# println("Making results plots for the detailed water cases")
-# make_water_f_plot(water_data_mr)
-# make_water_Hspecies_plot(water_data_mr, "mr")
-# make_water_Hspecies_plot(water_data_abs, "abs")
-# make_water_output_vs_data(water_data_mr, water_data_abs)
-# make_water_loss_contribs_plot(water_data_abs)
-# println()
+println("Analyzing water model output, building dicts, making small plots")
+water_data_mr = analyze_water("mr", other_deuterated, makeplots)
+water_data_abs = analyze_water("abs", other_deuterated, makeplots)
+println("Making results plots for the detailed water cases")
+make_water_f_plot(water_data_mr)
+make_water_Hspecies_plot(water_data_mr, "mr")
+make_water_Hspecies_plot(water_data_abs, "abs")
+make_water_output_vs_data(water_data_mr, water_data_abs)
+make_water_loss_contribs_plot(water_data_abs)
+println()
 
 
 # O2  TODO: update this
@@ -2058,15 +2059,15 @@ write_new_files = false  # set to true if running for first time after new simul
 
 
 # TEMPERATURE
-# println("Analyzing temp model output, building dicts, making small plots")
-# T_data_mr = analyze_T("mr", other_deuterated, makeplots)
-# T_data_abs = analyze_T("abs", other_deuterated, makeplots)
-# println("Making results plots for the detailed temperature cases")
-# make_T_f_plot(T_data_mr)
-# make_T_Hspecies_plot(T_data_mr, "mr")
-# make_T_Hspecies_plot(T_data_abs, "abs")
-# make_T_output_vs_data(T_data_mr, T_data_abs)
-# make_T_loss_contribs_plot(T_data_abs)
+println("Analyzing temp model output, building dicts, making small plots")
+T_data_mr = analyze_T("mr", other_deuterated, makeplots)
+T_data_abs = analyze_T("abs", other_deuterated, makeplots)
+println("Making results plots for the detailed temperature cases")
+make_T_f_plot(T_data_mr)
+make_T_Hspecies_plot(T_data_mr, "mr")
+make_T_Hspecies_plot(T_data_abs, "abs")
+make_T_output_vs_data(T_data_mr, T_data_abs)
+make_T_loss_contribs_plot(T_data_abs)
 
 
 # write files if being written for the first time

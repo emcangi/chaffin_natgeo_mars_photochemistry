@@ -26,7 +26,7 @@ plt.rcParams['axes.labelsize'] = 22
 plt.rcParams['xtick.labelsize'] = 18
 plt.rcParams['ytick.labelsize'] = 18
 
-research_dir = "/home/emc/GDrive-CU/Research-FF/"
+research_dir = "/home/emc/GDrive-CU/Research-Modeling/FractionationFactor/Code/"
 results_dir = research_dir+"Results/"
 
 # Fit the 250K data on the red edge and extrapolate to 220 nm ==================
@@ -34,7 +34,7 @@ results_dir = research_dir+"Results/"
 # Do the line fit
 data250 = np.loadtxt("uvxsect/HDO_250K.dat")
 wvs_to_fit = data250[-30:][:, 0]
-xsect_to_fit = data250[-30:][:, 2]
+xsect_to_fit = data250[-30:][:, 1]
 xsect_to_fit_log = np.log10(xsect_to_fit)
 z = np.polyfit(wvs_to_fit, xsect_to_fit_log, 1)
 f = np.poly1d(z)
@@ -55,7 +55,7 @@ newwv_250 = np.arange(182, 220, 0.2)
 new_xsects_250 = f(newwv_250)
 new_xsects_250 = 10**new_xsects_250
 combined_wvs_250K = np.hstack((data250[:, 0], newwv_250))
-combined_xsects_250K = np.hstack((data250[:, 2], new_xsects_250))
+combined_xsects_250K = np.hstack((data250[:, 1], new_xsects_250))
 
 # Plot the extrapolated HDO cross sections
 # fig = plt.figure(figsize=(10, 8))
@@ -183,7 +183,7 @@ interpdata = np.column_stack((newx, yinterp))
 # First put all the wavelengths and cross sections together from data, 
 # extrapolations, and so forth for the 250K data.
 all_250_wvs = np.hstack((newwv_blu_298, cheng2004[:, 0], data250[:, 0], newwv_250))
-all_250_xsects = np.hstack((new_xsects_blu_298*0.5, cheng2004[:, 1]*0.5, data250[:, 2], new_xsects_250))
+all_250_xsects = np.hstack((new_xsects_blu_298*0.5, cheng2004[:, 1]*0.5, data250[:, 1], new_xsects_250))
 
 # interpolate all the 250K data
 x_interp_250 = np.arange(121.5, 220, 1)  # wavelengths binned in 1 nm centered on whole integer wavelengths
@@ -223,6 +223,6 @@ plt.legend(custom_lines, ["Cheng+1999 (298K)",
                           # "Cheng+1999 (250K)",
                           "Cheng+2004 (300K)", "extrapolated"], loc="lower left")
                           # "0.5*(Cheng+2004 data and extrapolation)"], loc="lower left")
-plt.savefig(results_dir+"ALL STUDY PLOTS/HDO_xsects.png", bbox_inches="tight")
+plt.savefig(results_dir+"AllResultPlots/HDO_xsects.png", bbox_inches="tight", dpi=300)
 
 np.savetxt("uvxsect/HDO_xsects.dat", interpdata, fmt=['%.1f', '%.7e'] )

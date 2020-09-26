@@ -29,7 +29,6 @@ function make_reproduction_plot()
     #=
     Plots our attempts at reproducing past studies against those studies.
     =#
-    Oflux = 1.2e8 
     filemin = results_dir*"Replications/Kras2002-rep/temp_213_125_200/converged_temp_213_125_200.h5"
     filemean = results_dir*"Replications/Kras2002-rep/temp_213_125_270/converged_temp_213_125_270.h5"
     filemax = results_dir*"Replications/Kras2002-rep/temp_213_125_350/converged_temp_213_125_350.h5"
@@ -133,7 +132,7 @@ function make_reproduction_plot()
                 ha="right")
     end
 
-    savefig(results_dir*"AllResultPlots/f-reproductions-plot.png", bbox_inches="tight")
+    savefig(results_dir*"AllResultPlots/f-reproductions-plot.png", bbox_inches="tight", dpi=300)
 end
 
 # ==============================================================================
