@@ -22,7 +22,7 @@ using ProgressMeter
 using Photochemistry  # custom module for this project
 # The following functions are imported directly in order to overload them, making
 # multiple methods available. 
-import Photochemistry.fluxcoefs, Photochemistry.Dcoef, Photochemistry.scaleH
+import Photochemistry.fluxcoefs, Photochemistry.scaleH
 
 
 include("PARAMETERS.jl")
@@ -391,11 +391,6 @@ function chemJmat(nthis, inactive, activespecies, inactivespecies, Jrates, T, M,
 
     sparse(chemJi, chemJj, chemJval, length(nthis), length(nthis), +);
 end
-
-# diffusion functions ==========================================================
-
-# Overload
-Dcoef(z, species::Symbol, n_current) = Dcoef(Temp(z), n_tot(n_current, z), species)
 
 # main routine functions =======================================================
 function update_Jrates!(n_current::Dict{Symbol, Array{Float64, 1}})
@@ -804,10 +799,6 @@ H_effusion_velocity = effusion_velocity(Temp(zmax), 1.0, zmax)
 H2_effusion_velocity = effusion_velocity(Temp(zmax), 2.0, zmax)
 D_effusion_velocity = effusion_velocity(Temp(zmax), 2.0, zmax)
 HD_effusion_velocity = effusion_velocity(Temp(zmax), 3.0, zmax)
-
-# Used for passing a variable speciesbcs function
-v_eff = Dict("H"=>H_effusion_velocity, "D"=>D_effusion_velocity, 
-             "H2"=>H2_effusion_velocity, "HD"=>HD_effusion_velocity)
 
 #=
     boundary conditions for each species (mostly from Nair 1994, Yung 1988). For 

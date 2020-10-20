@@ -281,7 +281,7 @@ function plot_temp_3panel(base)
 
     Ts = collect(lowTs:10.:hiTs)
     Tt = collect(lowTt:10:hiTt)
-    Te = collect(lowTe:25:hiTe)
+    Te = collect(lowTe:25:highestTe)
     
     numsurf = length(Ts)
     numtropo = length(Tt)
@@ -338,10 +338,11 @@ end
 
 Tprofs = [[lowTs, meanTt, meanTe], [meanTs, lowTt, meanTe], [meanTs, meanTt, lowTe], 
                  [hiTs, meanTt, meanTe], [meanTs, hiTt, meanTe], [meanTs, meanTt, hiTe]]
-plot_T_6panel(results_dir, Tprofs)
+                 
+# plot_T_6panel(results_dir, Tprofs)
 
 plot_temp_3panel(results_dir)
 
-plot_one_profile([meanTs, meanTt, meanTe], "Standard temperature", results_dir)
+# plot_one_profile([meanTs, meanTt, meanTe], "Standard temperature", results_dir)
 
-plot_all_water_profs(meantemps, hygropause_alt, results_dir, "MainCases/", plot_HDO=true)
+# plot_all_water_profs(meantemps, hygropause_alt, results_dir, "MainCases/", plot_HDO=true)

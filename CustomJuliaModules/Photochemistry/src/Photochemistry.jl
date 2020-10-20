@@ -169,7 +169,7 @@ function plotatm(n_current; t=nothing, iter=nothing, Hsp_only=false, savepath=no
     # convfig.canvas.draw()  # use if you want the plots in the live figure to update as the simulation converges
 
     if savepath != nothing
-        savefig(savepath*"Hspec_only.png", bbox_inches="tight")
+        savefig(savepath*"atmo_snapshot.png", bbox_inches="tight")
     end
 end
 

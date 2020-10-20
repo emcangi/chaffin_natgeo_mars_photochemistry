@@ -44,12 +44,19 @@ global meanTsint = 216
 global meanTtint = 130
 global meanTeint = 205
 
+# These are the low and high values for the "standard atmosphere and reasonable 
+# climate variations" cases. NOT the full range of temperatures used to make the
+# detailed cases stuff, because those include temps up to 350 K.
 global lowTs = 160.0
 global hiTs = 270.0
 global lowTt = 100.0
 global hiTt = 160.0
 global lowTe = 150.0
 global hiTe = 250.0
+
+global highestTe = 350.0  # This is the highest exobase temperature considered.
+                          # AFAIK this parameter is only used in making the 3-panel
+                          # temperature profile plot.
 
 MR_mean_water = 1.38e-4
 
