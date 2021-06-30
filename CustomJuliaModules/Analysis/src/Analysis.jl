@@ -15,7 +15,8 @@ using Photochemistry: get_ncurrent, write_ncurrent, n_tot, effusion_velocity,
                       speciesbcs, plot_bg, plotatm, Tpiecewise, Psat, Psat_HDO, 
                       searchdir, search_subfolders, create_folder, input
 
-include("../../../PARAMETERS.jl")
+include("/home/emc/GDrive-CU/Research-Modeling/FractionationFactor/Code/PARAMETERS.jl")
+println("NOTICE: Parameter file in use is /home/emc/GDrive-CU/Research-Modeling/FractionationFactor/Code/PARAMETERS.jl")
 
 export get_ncurrent, write_ncurrent, n_tot, 
        effusion_velocity, speciesbcs, 
